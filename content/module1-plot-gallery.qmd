@@ -1,6 +1,12 @@
 ---
 title: "Deep-dive · Plot Gallery"
 subtitle: "Optional companion to Module 1"
+pagetitle: "ggplot2 Plot Gallery for Longitudinal Data | ABCD R Workshop"
+description-meta: "Copy-paste ggplot2 recipes for longitudinal data: histograms, boxplots, violin plots, spaghetti trajectory plots, faceting, and publication-ready themes."
+open-graph:
+  description: "Copy-paste ggplot2 recipes: histograms, boxplots, violins, spaghetti trajectory plots, faceting and publication themes."
+twitter-card:
+  description: "Copy-paste ggplot2 recipes: histograms, boxplots, violins, spaghetti trajectory plots, faceting and publication themes."
 ---
 
 Optional. A reference for the plots that come up most often, on the same synthetic

@@ -1,0 +1,25 @@
+---
+title: "Page not found"
+pagetitle: "Page not found | R + Statistics Workshop"
+description-meta: "That page does not exist. Browse the four modules of the R and statistics workshop series."
+toc: false
+# A 404 should never appear in search results
+include-in-header:
+  text: |
+    <meta name="robots" content="noindex">
+---
+
+That page does not exist — it may have been moved or renamed.
+
+## Try one of these
+
+- [Workshop home](index.qmd) — schedule, modules and certificates
+- [Module 0 · Getting set up](content/module0.qmd) — install R and RStudio
+- [Module 1 · Foundations of R](content/module1.qmd) — start here if you are new to R
+- [Module 2 · Data exploration & visualization](content/module2.qmd)
+- [Module 3 · Inferential statistics](content/module3.qmd)
+- [Module 4 · Applied projects](content/module4.qmd)
+
+Still stuck? Email **Andrew Moore**
+([mooreand@musc.edu](mailto:mooreand@musc.edu)) or **Billu Das**
+([biplabendu.das@gmail.com](mailto:biplabendu.das@gmail.com)).

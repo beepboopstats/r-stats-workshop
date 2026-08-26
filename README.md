@@ -4,7 +4,7 @@ A four-part workshop series teaching programming in R and statistics using
 longitudinal study data, for research staff and consortium members in the ABCD
 study.
 
-**Site: <https://beepboopstats.github.io/r-stats-workshop/>**
+**Site: <https://www.beepboopstats.com/r-stats-workshop/>**
 
 | Module | Date | Topic |
 |:--|:--|:--|

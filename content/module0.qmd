@@ -1,6 +1,12 @@
 ---
 title: "Module 0 · Getting Set Up"
 subtitle: "Self-paced · do this before Module 1"
+pagetitle: "Module 0: Install R & RStudio | ABCD R Workshop"
+description-meta: "Set up R and RStudio for the workshop: per-OS install steps, a Posit Cloud fallback for locked-down laptops, RStudio Projects, and package installation."
+open-graph:
+  description: "Install R and RStudio, or use Posit Cloud if your laptop is locked down. Set up a project folder and check your setup works before Module 1."
+twitter-card:
+  description: "Install R and RStudio, or use Posit Cloud if your laptop is locked down. Set up a project folder and check your setup works before Module 1."
 ---
 
 This module is housekeeping, and it is the most boring page on this site. Work

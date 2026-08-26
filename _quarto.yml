@@ -4,6 +4,7 @@ project:
   output-dir: docs
   render:
     - index.qmd
+    - 404.qmd
     - content/*.qmd
   resources:
     - data/
@@ -17,8 +18,13 @@ execute:
 website:
   title: "R + Statistics Workshop"
   description: "A four-part workshop series teaching R programming and statistics with longitudinal study data, for ABCD research staff and consortium members."
-  site-url: https://beepboopstats.github.io/r-stats-workshop/
+  site-url: https://www.beepboopstats.com/r-stats-workshop
+  favicon: assets/img/favicon.png
+  # Default social-share card for any page that does not set its own `image`.
+  image: assets/img/poster-header.png
   open-graph: true
+  twitter-card:
+    card-style: summary_large_image
   reader-mode: false
   page-footer:
     left: "© Beep Boop Stats"
@@ -65,6 +71,9 @@ format:
     code-overflow: wrap
     code-link: false
     df-print: default
+    # GitHub Pages serves both /page.html and /page/ -- canonical tags stop
+    # search engines treating those as duplicate content.
+    canonical-url: true
     link-external-newwindow: true
 
 format-links: []

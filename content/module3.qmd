@@ -1,6 +1,12 @@
 ---
 title: "Module 3 · Inferential Statistics in R"
 subtitle: "Thu Oct 29, 2026 · noon–2pm PT"
+pagetitle: "Module 3: Inferential Statistics in R | ABCD R Workshop"
+description-meta: "Run t-tests, chi-squared, ANOVA and linear models in R, and handle the normality and missing-data problems that longitudinal ABCD data raises."
+open-graph:
+  description: "t-tests, chi-squared, ANOVA and linear models in R, plus the normality and missing-data problems longitudinal data raises."
+twitter-card:
+  description: "t-tests, chi-squared, ANOVA and linear models in R, plus the normality and missing-data problems longitudinal data raises."
 ---
 
 ::: {.callout-note}

@@ -5,7 +5,7 @@
 #
 # Follow along here rather than retyping from the website. Section
 # numbers match the module page:
-#   https://beepboopstats.github.io/r-stats-workshop/content/module1.html
+#   https://www.beepboopstats.com/r-stats-workshop/content/module1.html
 #
 # Run the line your cursor is on with:
 #   Ctrl+Enter   (Windows/Linux)

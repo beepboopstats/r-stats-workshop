@@ -1,7 +1,17 @@
 ---
 title: "R + Statistics Workshop Series"
 subtitle: "For research staff and consortium members in the ABCD study"
+pagetitle: "R Programming & Statistics Workshop for ABCD Researchers"
+description-meta: "Four-part workshop series teaching R programming and statistics to ABCD Study research staff, from first install through tidyverse pipelines and inferential tests."
+open-graph:
+  description: "A four-part workshop series teaching R programming and statistics to ABCD Study research staff, using longitudinal data."
+twitter-card:
+  description: "A four-part workshop series teaching R programming and statistics to ABCD Study research staff, using longitudinal data."
 toc: false
+# Course / CourseInstance structured data -- drives Google's course rich results.
+# Update the dates here whenever the schedule table above changes.
+include-in-header:
+  - assets/schema.html
 ---
 
 ::: workshop-hero

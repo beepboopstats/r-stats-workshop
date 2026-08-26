@@ -1,6 +1,12 @@
 ---
 title: "Deep-dive · Data Types, Coercion and Factors"
 subtitle: "Optional companion to Module 1"
+pagetitle: "R Data Types, Coercion & Factors | ABCD R Workshop"
+description-meta: "How R data types, coercion and factors work: why numeric columns turn into text, how NA propagates through calculations, and how factor levels control plot order."
+open-graph:
+  description: "Why numeric columns turn into text, how NA propagates, and how factor levels control the order of plots and models."
+twitter-card:
+  description: "Why numeric columns turn into text, how NA propagates, and how factor levels control the order of plots and models."
 ---
 
 Optional. Nothing in Module 2 assumes it. Read it when a column turns out to be

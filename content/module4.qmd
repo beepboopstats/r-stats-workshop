@@ -1,6 +1,12 @@
 ---
 title: "Module 4 · Applied Projects"
 subtitle: "Thu Nov 12, 2026 · noon–2pm PT"
+pagetitle: "Module 4: Applied R Projects | ABCD R Workshop"
+description-meta: "Practise end-to-end data analysis in R: build a hypothesis, choose a statistical test, and produce poster-ready results from ABCD-style longitudinal data."
+open-graph:
+  description: "End-to-end analysis practice: build a hypothesis, choose a test, and produce poster-ready results from ABCD-style data."
+twitter-card:
+  description: "End-to-end analysis practice: build a hypothesis, choose a test, and produce poster-ready results from ABCD-style data."
 ---
 
 ::: {.callout-note}

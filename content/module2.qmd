@@ -1,6 +1,12 @@
 ---
 title: "Module 2 · Data Exploration, Visualization & Descriptive Statistics"
 subtitle: "Thu Sep 24, 2026 · noon–2pm PT"
+pagetitle: "Module 2: Data Visualization with ggplot2 | ABCD R Workshop"
+description-meta: "Build tidy data pipelines in R and create publication-ready figures with ggplot2. Module 2 of a four-part R and statistics workshop for ABCD researchers."
+open-graph:
+  description: "Tidy data pipelines and publication-ready ggplot2 figures. Module 2 of the ABCD R and statistics workshop series."
+twitter-card:
+  description: "Tidy data pipelines and publication-ready ggplot2 figures. Module 2 of the ABCD R and statistics workshop series."
 ---
 
 ::: {.callout-note}
