@@ -1,0 +1,106 @@
+/*-- scss:defaults --*/
+/*-- Adapted from beepboopstats.github.io/assets/css/styles.scss --*/
+/*-- Brand palette and fonts kept; portfolio-only rules dropped. --*/
+
+@import url(https://fonts.googleapis.com/css?family=Inter:400italic,700italic,400,700);
+@import url(https://fonts.googleapis.com/css?family=Source+Code+Pro:400italic,700italic,400,700);
+
+$font-family-sans-serif: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+$font-family-monospace: "Source Code Pro", ui-monospace, Menlo, Consolas, monospace;
+
+$primary: #62272D;
+$secondary: #FDBF6F;
+$success: #33A02C;
+$info: #DEEBF7;
+$warning: #FF7F00;
+$danger: #E31A1C;
+
+/*-- scss:rules --*/
+
+code {
+  font-size: 0.9rem !important;
+}
+
+.navbar {
+  height: 72px !important;
+  position: relative;
+  background-color: $primary !important;
+}
+
+.navbar-logo {
+  max-height: 40px !important;
+}
+
+.navbar-collapse {
+  background-color: $primary !important;
+}
+
+.menu-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* ---------- Teaching-site additions ---------- */
+
+/* Landing-page hero */
+.workshop-hero img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+
+/* Give code blocks room to breathe -- they are the main content here */
+div.sourceCode {
+  padding: 0.15rem 0.25rem;
+  border-radius: 0.35rem;
+}
+
+pre.sourceCode code {
+  line-height: 1.5;
+}
+
+/* Exercises: note callouts carry the prompt, tips carry the solution.
+   Distinct left borders so the two never blur together when skimming. */
+div.callout-note {
+  border-left-color: $primary !important;
+}
+
+div.callout-tip {
+  border-left-color: $success !important;
+}
+
+/* "Show the solution" headers should read as clickable */
+div.callout-tip .callout-title {
+  cursor: pointer;
+}
+
+/* Module cards on the landing page */
+.module-card {
+  border: 1px solid rgba(98, 39, 45, 0.25);
+  border-radius: 0.45rem;
+  padding: 1rem 1.15rem;
+  height: 100%;
+
+  h3 {
+    margin-top: 0;
+    font-size: 1.15rem;
+    color: $primary;
+  }
+
+  .module-when {
+    font-size: 0.9rem;
+    opacity: 0.75;
+  }
+}
+
+/* Schedule table: keep it compact and scannable */
+table.schedule {
+  font-size: 0.95rem;
+}
+
+/* Wide tables and code must scroll inside their own box,
+   never push the page sideways. */
+.cell-output-stdout pre {
+  overflow-x: auto;
+}

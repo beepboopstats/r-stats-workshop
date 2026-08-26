@@ -1,0 +1,38 @@
+---
+title: "Module 3 · Inferential Statistics in R"
+subtitle: "Thu Oct 29, 2026 · noon–2pm PT"
+---
+
+::: {.callout-note}
+## Materials coming soon
+This page will fill in before the session.
+:::
+
+**Designed for** someone with intermediate knowledge of R and RStudio. The first
+two modules exist to prepare you for this one.
+
+In this session we will:
+
+- run the analyses that appear most often in papers — **t-tests, chi-squared,
+  ANOVA**
+- discuss the considerations that **longitudinal datasets like ABCD** force on you,
+  including violated normality assumptions and missing data
+- introduce **linear models** for testing hypotheses
+
+::: {.callout-important}
+Module 3 is a **prerequisite for [Module 4](module4.qmd)**, which is a hands-on
+project session assuming you can already choose and run a test.
+:::
+
+## Preparation
+
+- [Module 2](module2.qmd), or equivalent comfort with tidyverse pipelines and
+  ggplot2
+- The missing-data section of [Module 1](module1.qmd#missing-data) — we pick that
+  thread up properly here
+
+## Resources
+
+- [longitudinal.dev](https://longitudinal.dev/) — a collection of statistical
+  analyses for longitudinal studies
+- [Running a paired t-test on ABCD data](https://longitudinal.dev/abcd/lm/difference-score_paired-ttest/)

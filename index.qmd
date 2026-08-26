@@ -1,0 +1,99 @@
+---
+title: "R + Statistics Workshop Series"
+subtitle: "For research staff and consortium members in the ABCD study"
+toc: false
+---
+
+::: workshop-hero
+![](assets/img/poster-header.png){fig-alt="R + Statistics Workshop banner"}
+:::
+
+A **four-part workshop series** that teaches programming in R and statistics using
+longitudinal study data. We start from the very beginning — no prior programming
+experience assumed — and build toward running and interpreting your own analyses
+on ABCD-style data.
+
+Sessions are **live on Zoom, noon–2pm PT**. All registered participants receive the
+Zoom link by email.
+
+## Schedule
+
+| Module | Date | Topic | Assumes |
+|:--|:--|:--|:--|
+| [**0**](content/module0.qmd) | self-paced | Get your computer set up | Nothing |
+| [**1**](content/module1.qmd) | Thu **Sep 10, 2026** | Foundations of R programming | Never used R |
+| [**2**](content/module2.qmd) | Thu **Sep 24, 2026** | Data exploration, visualization & descriptive statistics | Module 1 |
+| [**3**](content/module3.qmd) | Thu **Oct 29, 2026** | Inferential statistics | Module 2 |
+| [**4**](content/module4.qmd) | Thu **Nov 12, 2026** | Applied projects | **Module 3 required** |
+
+: {.schedule tbl-colwidths="[8,20,52,20]"}
+
+## Start here
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+::: module-card
+### Module 0 · Setup
+[self-paced]{.module-when}
+
+Install R and RStudio, or use Posit Cloud if your laptop is locked down.
+Set up a project folder, install the packages we use, and run a short check
+to confirm everything works.
+
+[Start Module 0 →](content/module0.qmd)
+:::
+:::
+
+::: {.g-col-12 .g-col-md-6}
+::: module-card
+### Module 1 · Foundations of R
+[Sep 10, 2026]{.module-when}
+
+Reading data, the shape of R code, the pipe, the core data-wrangling verbs,
+handling missing values, and your first plots — all on a synthetic
+ABCD-style dataset.
+
+[Start Module 1 →](content/module1.qmd)
+:::
+:::
+
+:::
+
+## How the series fits together
+
+You are welcome to attend **any module you like** — they are designed to stand on
+their own where possible. That said, they do build on each other, and the one hard
+rule is that **Module 3 is a prerequisite for Module 4**, since Module 4 is a
+hands-on project session that assumes you can already choose and run a statistical
+test.
+
+If you have never opened R before, do [Module 0](content/module0.qmd) first. It is
+short, self-paced, and it is the difference between spending the first half hour of
+Module 1 fighting an installer or actually writing code.
+
+## Certificates
+
+After the series, we award a certificate backed by the **ABCD Professional
+Development Workgroup** and **ABCD-ReproNim** indicating which modules you
+completed. These are a useful addition to a CV and strengthen applications for
+graduate school or roles that expect demonstrated statistical programming skill.
+
+## What we teach with
+
+We use **tidyverse** style R throughout — the `|>` pipe, and packages like
+`dplyr`, `ggplot2` and `readr` — because it is the most readable way in for
+newcomers and the style most modern R code you will meet is written in. We
+introduce just enough base R notation along the way for you to read code you
+find elsewhere.
+
+All examples run on a **synthetic dataset** shaped like an ABCD longitudinal
+release: one row per participant per visit, with realistic missing data. It
+contains no real participant data.
+
+[Download the dataset](data/abcd-synthetic.csv){.btn .btn-outline-primary .btn-sm}
+
+## Questions?
+
+Contact **Andrew Moore** ([mooreand@musc.edu](mailto:mooreand@musc.edu)) or
+**Billu Das** ([biplabendu.das@gmail.com](mailto:biplabendu.das@gmail.com)).

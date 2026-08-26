@@ -1,0 +1,237 @@
+---
+title: "Deep-dive · Plot Gallery"
+subtitle: "Optional companion to Module 1"
+---
+
+Optional. A reference for the plots that come up most often, on the same synthetic
+data. Module 2 covers this properly; this page is here so you can copy something
+that works today.
+
+```{r}
+#| label: setup
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+abcd <- read_csv("data/abcd-synthetic.csv") |> 
+  mutate(visit = factor(visit, levels = c("baseline", "year_1", "year_2")))
+```
+
+Note the `factor()` line — it fixes the visit order once, so every plot below
+comes out chronological rather than alphabetical. See the
+[data types deep-dive](module1-data-types.qmd#factors) for why.
+
+## The grammar, in one paragraph
+
+Every ggplot is `ggplot(data, aes(...))` plus one or more `geom_*()` layers joined
+with `+`. `aes()` maps **columns to visual properties** — x, y, colour, fill,
+size, shape. Anything you set *outside* `aes()` is a fixed constant; anything
+*inside* varies with the data. That distinction is the single most common source of
+confusion:
+
+```{r}
+#| label: fig-aes-vs-fixed
+#| fig-cap: "Left: colour fixed. Right: colour mapped to a column."
+#| fig-alt: "Two scatterplots side by side; the first is all one colour, the second is coloured by sex."
+#| layout-ncol: 2
+#| warning: false
+# colour OUTSIDE aes() -- one fixed colour
+ggplot(abcd, aes(x = age_months, y = cognition_score)) +
+  geom_point(colour = "#62272D", alpha = 0.5)
+
+# colour INSIDE aes() -- varies by column, legend appears
+ggplot(abcd, aes(x = age_months, y = cognition_score, colour = sex)) +
+  geom_point(alpha = 0.5)
+```
+
+## One continuous variable
+
+```{r}
+#| label: fig-hist-density
+#| fig-cap: "Histogram and density for the same variable"
+#| fig-alt: "A histogram of cognition scores next to a smoothed density curve of the same data."
+#| layout-ncol: 2
+#| warning: false
+ggplot(abcd, aes(x = cognition_score)) +
+  geom_histogram(binwidth = 5, fill = "#62272D", colour = "white") +
+  labs(x = "Cognition score", y = "Count")
+
+ggplot(abcd, aes(x = cognition_score)) +
+  geom_density(fill = "#FDBF6F", alpha = 0.7) +
+  labs(x = "Cognition score", y = "Density")
+```
+
+`binwidth` is worth setting deliberately. Leave it out and ggplot2 picks 30 bins
+and warns you about it; the right value depends on your data and is a judgement
+call, so try a few.
+
+## One continuous, one categorical
+
+```{r}
+#| label: fig-box-violin
+#| fig-cap: "Boxplot, and a violin with the raw points overlaid"
+#| fig-alt: "Boxplots of total problems by visit, and violin plots of the same with individual points jittered on top."
+#| layout-ncol: 2
+#| warning: false
+ggplot(abcd, aes(x = visit, y = total_problems)) +
+  geom_boxplot(fill = "#FDBF6F") +
+  labs(x = NULL, y = "Total problems")
+
+ggplot(abcd, aes(x = visit, y = total_problems)) +
+  geom_violin(fill = "#DEEBF7") +
+  geom_jitter(width = 0.15, alpha = 0.25, size = 0.7) +
+  labs(x = NULL, y = "Total problems")
+```
+
+The right-hand version shows the actual sample size and any clumping, which a
+boxplot hides. With a few hundred points it is usually the more honest choice.
+
+## Two continuous variables
+
+```{r}
+#| label: fig-scatter-smooth
+#| fig-cap: "Scatterplot with a linear trend"
+#| fig-alt: "Scatterplot of cognition score against age in months with a fitted straight line and confidence band."
+#| warning: false
+ggplot(abcd, aes(x = age_months, y = cognition_score)) +
+  geom_point(alpha = 0.4, colour = "#62272D") +
+  geom_smooth(method = "lm", colour = "#FF7F00") +
+  labs(x = "Age (months)", y = "Cognition score")
+```
+
+`geom_smooth(method = "lm")` draws a straight-line fit with a confidence band.
+Leave `method` out and you get a wiggly loess curve instead, which is better for
+"is there any pattern here at all?" and worse for "is this trend linear?".
+
+::: {.callout-warning}
+Drawing a trend line is not the same as testing one. This picture has no p-value
+and makes no claim. Module 3 is where fitted lines become inference.
+:::
+
+## Change over time
+
+Two different questions, two different plots.
+
+**Group averages** — one line, the summary:
+
+```{r}
+#| label: fig-mean-line
+#| fig-cap: "Mean cognition score by visit, with standard-error bars"
+#| fig-alt: "Line chart with error bars showing mean cognition score increasing across three visits."
+abcd |> 
+  group_by(visit) |> 
+  summarise(
+    mean_cog = mean(cognition_score, na.rm = TRUE),
+    se       = sd(cognition_score, na.rm = TRUE) / sqrt(sum(!is.na(cognition_score)))
+  ) |> 
+  ggplot(aes(x = visit, y = mean_cog, group = 1)) +
+  geom_line(colour = "#62272D", linewidth = 1) +
+  geom_point(size = 3, colour = "#62272D") +
+  geom_errorbar(aes(ymin = mean_cog - se, ymax = mean_cog + se), width = 0.1) +
+  labs(x = NULL, y = "Mean cognition score")
+```
+
+**Individual trajectories** — one line per participant, the spaghetti plot:
+
+```{r}
+#| label: fig-spaghetti
+#| fig-cap: "Individual trajectories for 30 participants"
+#| fig-alt: "Many faint lines, one per participant, each connecting their cognition scores across visits, with a thick average line on top."
+#| warning: false
+set.seed(1)
+some_ids <- sample(unique(abcd$subject_id), 30)
+
+abcd |> 
+  filter(subject_id %in% some_ids) |> 
+  ggplot(aes(x = visit, y = cognition_score, group = subject_id)) +
+  geom_line(alpha = 0.35, colour = "#62272D") +
+  geom_point(alpha = 0.5, size = 1) +
+  stat_summary(aes(group = 1), fun = mean, geom = "line",
+               colour = "#FF7F00", linewidth = 1.4) +
+  labs(x = NULL, y = "Cognition score")
+```
+
+This is the plot that makes longitudinal data feel real. The orange average rises
+gently; individual children go up, down and sideways. Any analysis that treats
+these 90 points as independent observations is wrong, and that is precisely the
+problem Module 3 takes on.
+
+Note `group = subject_id`: it tells ggplot2 which points belong to the same
+person. Without it you get one meaningless zigzag.
+
+## Small multiples
+
+`facet_wrap()` splits one plot into a panel per group. Usually clearer than
+cramming four colours into one panel:
+
+```{r}
+#| label: fig-facet
+#| fig-cap: "Cognition against age, faceted by site"
+#| fig-alt: "Five small scatterplots, one per study site, each with its own trend line."
+#| warning: false
+#| fig-height: 5
+ggplot(abcd, aes(x = age_months, y = cognition_score)) +
+  geom_point(alpha = 0.4, size = 0.8, colour = "#62272D") +
+  geom_smooth(method = "lm", se = FALSE, colour = "#FF7F00") +
+  facet_wrap(~ site) +
+  labs(x = "Age (months)", y = "Cognition score")
+```
+
+`~ site` is a **formula** — read `~` as "by". The same notation appears throughout
+R's modelling functions in Module 3.
+
+## Counts
+
+```{r}
+#| label: fig-bars
+#| fig-cap: "Stacked and side-by-side bars for the same counts"
+#| fig-alt: "Two bar charts of participant counts by site, split by sex; one stacked, one with bars side by side."
+#| layout-ncol: 2
+ggplot(abcd, aes(x = site, fill = sex)) +
+  geom_bar() +
+  labs(x = NULL, y = "Participant-visits")
+
+ggplot(abcd, aes(x = site, fill = sex)) +
+  geom_bar(position = "dodge") +
+  labs(x = NULL, y = "Participant-visits")
+```
+
+Stacked bars are good for totals, bad for comparing the parts. `position = "dodge"`
+is better when the comparison between groups is the point.
+
+## Making it presentable
+
+A plot for yourself needs nothing. A plot for a poster needs labels, a theme, and
+a deliberate size:
+
+```{r}
+#| label: fig-polished
+#| fig-cap: "The same data, tidied up for presentation"
+#| fig-alt: "A polished boxplot of total problems by visit with title, subtitle, caption and a clean minimal theme."
+#| warning: false
+ggplot(abcd, aes(x = visit, y = total_problems, fill = visit)) +
+  geom_boxplot(show.legend = FALSE, outlier.alpha = 0.3) +
+  scale_fill_manual(values = c("#DEEBF7", "#FDBF6F", "#62272D")) +
+  labs(
+    title    = "Reported behaviour problems decline modestly across visits",
+    subtitle = "Synthetic ABCD-style data, 200 participants",
+    x        = NULL,
+    y        = "Total problems",
+    caption  = "Synthetic data — for teaching only"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+Then save it at a size and resolution a journal will accept:
+
+```r
+ggsave("output/problems-by-visit.png", width = 7, height = 4.5, dpi = 300)
+```
+
+`ggsave()` saves the last plot drawn. Set `width` and `height` in inches — resizing
+a saved PNG afterwards makes the text blurry, whereas re-saving at the right size
+does not.
+
+Back to [Module 1](module1.qmd), or on to
+[Module 2](module2.qmd) where this becomes the main event.

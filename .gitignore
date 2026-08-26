@@ -1,0 +1,29 @@
+# History and Session Data
+.Rhistory
+.Rapp.history
+.RData
+.RDataTmp
+.Rproj.user/
+
+# Environment Variables
+.Renviron
+
+# macOS folder attributes
+**/*.DS_Store
+.DS_Store
+
+# Real participant data and dev scratchpads.
+# NOTE: data/ is NOT ignored -- it holds the tracked synthetic teaching
+# dataset. Real exports live in dev/ and must stay there.
+dev/
+
+# Quarto
+/.quarto/
+/_freeze/
+# The site is built and published by CI, never committed
+docs/
+
+# Live-coding artifacts: the folder is tracked, its contents are not
+output/*
+!output/.gitkeep
+CLAUDE.md

@@ -1,0 +1,732 @@
+---
+title: "Module 1 · Foundations of R Programming"
+subtitle: "Thu Sep 10, 2026 · noon–2pm PT"
+---
+
+This module is for someone who has **never used R**. By the end of two hours you
+will have read a real dataset into R, pulled it apart to answer questions about
+it, dealt with missing values, and made three plots.
+
+We teach R the way most modern R is written: **tidyverse** style, using the `|>`
+pipe. Along the way we point out the bits of plain "base R" notation you need in
+order to *read* code you find on the internet.
+
+::: {.callout-note}
+## Before you start
+Work through [Module 0](module0.qmd) first — R and RStudio installed, an
+RStudio Project open, the packages installed, and `abcd-synthetic.csv` sitting in
+your `data/` folder.
+
+Following along live? Open the skeleton script
+[`module1-live.R`](../scripts/module1-live.R) and type into that.
+:::
+
+## 1. How code gets run
+
+Open your project, then **File → New File → R Script**. You now have an empty
+Editor pane at the top-left. Type this into it:
+
+```{r}
+#| label: first-line
+2 + 2
+```
+
+With your cursor on that line, press **Ctrl+Enter** (**Cmd+Enter** on macOS). The
+line jumps to the Console and the answer appears. That is the whole loop: write in
+the Editor, run with Ctrl+Enter, read the answer in the Console.
+
+The `[1]` in front of the answer is R telling you "this is the first element of
+the result". It is noise for now. Ignore it.
+
+### Storing things: `<-`
+
+An answer that only prints is not much use. To keep it, give it a name:
+
+```{r}
+#| label: assignment
+age_years <- 10
+age_years
+```
+
+`<-` is the **assignment arrow**, and it means "put the thing on the right into
+the name on the left". RStudio has a shortcut for it: **Alt+-** (**Option+-** on
+macOS).
+
+You will also see `=` used for assignment in other people's code. It mostly works.
+Use `<-` anyway — it is the convention in R, and `=` has a different job inside
+function calls, which we are about to meet.
+
+::: {.callout-tip}
+## Comments
+Anything after a `#` is ignored by R. Comments are for the human reading the code
+later, which is usually you, three weeks from now, with no memory of what you were
+doing.
+
+```r
+# Convert age to months for the analysis
+age_months <- age_years * 12
+```
+:::
+
+## 2. The base R notation you need to read code
+
+Four pieces of notation. You will see all four in every R script you ever open,
+including the tidyverse code in this workshop.
+
+### Functions and their arguments
+
+A **function** does a job. You call it by name, with round brackets, and you put
+what it should work on inside:
+
+```{r}
+#| label: functions
+sqrt(16)
+round(3.14159, digits = 2)
+```
+
+`sqrt` and `round` are the function names. `16`, `3.14159` and `digits = 2` are
+**arguments** — the inputs. Named arguments use `=` (this is why `<-` is used for
+assignment: it keeps the two ideas visually separate).
+
+To find out what a function does and what arguments it takes, put a `?` in front:
+
+```r
+?round
+```
+
+The documentation appears in the Help pane, bottom-right. It is dense and takes
+practice to read. Scroll straight to **Examples** at the bottom.
+
+### `c()` — making a vector
+
+`c()` is short for *combine*. It glues several values into one thing:
+
+```{r}
+#| label: vectors
+scores <- c(104, 98, 116, 91)
+scores
+```
+
+That is a **vector** — an ordered set of values of the same type. Almost every
+column of every dataset you touch is one.
+
+Operations apply to the whole vector at once, which is one of the genuinely nice
+things about R:
+
+```{r}
+#| label: vectorised
+scores + 10
+mean(scores)
+```
+
+### `$` — pulling one column out of a table
+
+Once we have a table of data, `$` reaches in and grabs a single column by name:
+
+```r
+abcd$age_months
+```
+
+You will see `$` constantly in older code. In tidyverse style we mostly avoid it,
+because the functions we use let us refer to columns by bare name. But you need to
+recognise it.
+
+### `library()` — switching a package on
+
+In Module 0 you *installed* packages. Installing downloads them once, permanently.
+**Loading** switches one on for the current session, and you do it every time you
+start R:
+
+```{r}
+#| label: libraries
+library(readr)    # reading data files
+library(dplyr)    # transforming data
+library(tidyr)    # tidying and reshaping
+library(ggplot2)  # plots
+```
+
+Put these lines at the top of every script. If you ever get
+`Error: could not find function "filter"`, the cause is almost always a missing
+`library()` line.
+
+::: {.callout-note}
+## Exercise 1.1
+Make a vector called `sleep` holding the values 9.5, 8, 10, 7.5. Then find its
+mean, and its highest value.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: ex-1-1
+sleep <- c(9.5, 8, 10, 7.5)
+mean(sleep)
+max(sleep)
+```
+:::
+
+## 3. Data types
+
+Every value in R has a **type**, and R is fussy about it. The four you will meet:
+
+```{r}
+#| label: types
+class(10.5)          # numeric  -- numbers
+class("baseline")    # character -- text, always in quotes
+class(TRUE)          # logical  -- TRUE / FALSE
+class(factor("F"))   # factor   -- categories with a fixed set of levels
+```
+
+Two consequences worth knowing now.
+
+**Text is not a number.** `"10"` and `10` are different things, and `"10" + 1` is
+an error, not `11`.
+
+**Mixing types in a vector forces everything to the safest common type.** Put a
+number and some text together and the number quietly becomes text:
+
+```{r}
+#| label: coercion
+mixed <- c(1, 2, "three")
+class(mixed)
+mixed
+```
+
+Notice the quotes around `"1"` and `"2"`. This is called **coercion**, and it is a
+common cause of "why is my column text?" — usually one stray non-numeric value in
+a spreadsheet.
+
+::: {.callout-tip}
+## Going deeper
+Types, coercion, and factors in more detail — including why factors bite people
+when they reorder plots — are on the
+[data types deep-dive](module1-data-types.qmd). Not needed today.
+:::
+
+## 4. Reading in the data
+
+Now the real thing. `read_csv()` from **readr** reads a comma-separated file:
+
+```{r}
+#| label: read-data
+abcd <- read_csv("data/abcd-synthetic.csv")
+```
+
+That path is **relative** to your project folder: "look in `data/`, find
+`abcd-synthetic.csv`". It works because you opened the RStudio Project in
+[Module 0](module0.qmd#set-up-a-project-folder) — that is what makes the short path
+possible.
+
+::: {.callout-important}
+## If you get `Error: 'data/abcd-synthetic.csv' does not exist`
+Two things to check, in this order:
+
+1. Is the file actually in the `data/` folder? Look in the Files pane, bottom-right.
+2. Is your project open? The title bar at the top-right of RStudio should say
+   **r-workshop**. If it says *Project: (None)*, open the `.Rproj` file and try
+   again.
+:::
+
+The dataset is **synthetic**: generated by a script, no real participants. But it
+is deliberately shaped like an ABCD release — one row per participant per visit,
+with realistic gaps.
+
+## 5. Looking at what you loaded
+
+Never analyse a dataset you have not looked at. Four functions, in the order you
+should use them:
+
+```{r}
+#| label: glimpse
+glimpse(abcd)
+```
+
+`glimpse()` is the one worth remembering: every column, its type, and the first
+few values, all on one screen.
+
+```{r}
+#| label: inspect
+dim(abcd)     # rows, then columns
+names(abcd)   # column names
+```
+
+```{r}
+#| label: head
+head(abcd)    # the first 6 rows
+```
+
+```{r}
+#| label: summary
+summary(abcd)
+```
+
+`summary()` earns its keep for one reason: the `NA's` count at the bottom of a
+column. That is your first look at missing data, and we come back to it in
+[section 8](#missing-data).
+
+Reading the columns:
+
+| Column | What it is |
+|:--|:--|
+| `subject_id` | Participant identifier. **Repeats** — one row per visit. |
+| `visit` | `baseline`, `year_1`, or `year_2` |
+| `site` | Study site, `S01`–`S05` |
+| `age_months` | Age at that visit, in months |
+| `sex` | `F` or `M` |
+| `total_problems` | A behaviour questionnaire total. Higher = more reported problems. |
+| `cognition_score` | A cognition composite, centred near 100 |
+| `screen_time_hrs` | Self-reported screen time, hours/day |
+| `sleep_hrs` | Self-reported sleep, hours/night |
+
+That `subject_id` repeats is the defining feature of a **longitudinal** dataset,
+and it is the thing that makes ABCD data both powerful and easy to get wrong.
+Module 3 deals with it properly.
+
+::: {.callout-note}
+## Exercise 1.2
+How many rows and columns does `abcd` have? How many rows would you expect if
+every one of the 200 participants attended all three visits — and does the number
+match?
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: ex-1-2
+dim(abcd)
+200 * 3
+```
+
+Fewer rows than 600. Some participants did not come back for a later visit —
+**attrition**, and it is entirely normal in a real longitudinal study. Those
+visits are missing as *absent rows*, not as `NA` values, which is a distinction
+that matters later.
+:::
+
+## 6. The pipe: `|>`
+
+Here is the idea that makes the rest of the workshop readable.
+
+Say you want the mean of the cognition scores. Written as nested function calls,
+you read it inside-out, right to left:
+
+```{r}
+#| label: nested
+mean(abcd$cognition_score, na.rm = TRUE)
+```
+
+Fine for one step. But real analysis is five or six steps, and nesting becomes
+unreadable. The **pipe** `|>` takes the thing on its left and passes it as the
+first argument to the function on its right:
+
+```{r}
+#| label: pipe-simple
+abcd$cognition_score |> mean(na.rm = TRUE)
+```
+
+Read `|>` out loud as **"and then"**. It lets you write a sequence in the order
+you actually think about it:
+
+> take the data, **and then** keep the baseline visits, **and then** average the
+> cognition scores
+
+The shortcut in RStudio is **Ctrl+Shift+M** (**Cmd+Shift+M**).
+
+::: {.callout-tip}
+## You will also see `%>%`
+Older tidyverse code — which is to say most of the tutorials, Stack Overflow
+answers and lab scripts you will ever meet — uses `%>%` instead. It comes from a
+package called **magrittr** and does essentially the same job.
+
+`|>` is newer, built into R itself, and needs no package. We use `|>` throughout.
+When you see `%>%`, read it as `|>` and carry on.
+:::
+
+## 7. The five verbs that do the work
+
+Almost all data wrangling is these five **dplyr** functions. Every one takes the
+data as its first argument and returns a new table — which is exactly what makes
+them pipeable.
+
+### `filter()` — keep some rows
+
+```{r}
+#| label: filter
+abcd |> filter(visit == "baseline")
+```
+
+Note `==`, two equals signs, for "is equal to". A single `=` is assignment, and
+using it here is a common early error.
+
+Several conditions, comma-separated, means *all* must hold:
+
+```{r}
+#| label: filter-two
+abcd |> filter(visit == "baseline", sex == "F")
+```
+
+The comparisons available: `==` equal, `!=` not equal, `>` `<` `>=` `<=`, and
+`%in%` for "is one of":
+
+```{r}
+#| label: filter-in
+abcd |> filter(site %in% c("S01", "S02"))
+```
+
+### `select()` — keep some columns
+
+```{r}
+#| label: select
+abcd |> select(subject_id, visit, cognition_score)
+```
+
+### `arrange()` — sort the rows
+
+```{r}
+#| label: arrange
+abcd |> arrange(desc(cognition_score))
+```
+
+`desc()` sorts high-to-low; leave it off for low-to-high.
+
+### `mutate()` — add or change a column
+
+```{r}
+#| label: mutate
+abcd |> 
+  mutate(age_years = age_months / 12) |> 
+  select(subject_id, visit, age_months, age_years)
+```
+
+Notice the pipeline: add a column, **and then** pick the columns to show. This is
+where the pipe starts paying off.
+
+### `summarise()` — collapse to a single row
+
+```{r}
+#| label: summarise
+abcd |> 
+  summarise(
+    n            = n(),
+    mean_cog     = mean(cognition_score, na.rm = TRUE),
+    mean_sleep   = mean(sleep_hrs, na.rm = TRUE)
+  )
+```
+
+`n()` counts rows. On its own `summarise()` is mildly interesting; paired with
+`group_by()` it becomes the workhorse of descriptive statistics:
+
+```{r}
+#| label: group-by
+abcd |> 
+  group_by(visit) |> 
+  summarise(
+    n        = n(),
+    mean_cog = mean(cognition_score, na.rm = TRUE),
+    mean_age = mean(age_months)
+  )
+```
+
+One row per group. Read it as: split by `visit`, **and then** compute these
+numbers within each split.
+
+For the special case of just counting, `count()` is shorter:
+
+```{r}
+#| label: count
+abcd |> count(visit)
+abcd |> count(site, sex)
+```
+
+::: {.callout-note}
+## Exercise 1.3
+Using one pipeline: keep only the `year_2` visits, then report the mean
+`screen_time_hrs` separately for each `sex`.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: ex-1-3
+abcd |> 
+  filter(visit == "year_2") |> 
+  group_by(sex) |> 
+  summarise(
+    n          = n(),
+    mean_screen = mean(screen_time_hrs, na.rm = TRUE)
+  )
+```
+:::
+
+::: {.callout-note}
+## Exercise 1.4
+Add a column `sleep_deficit` that is `9 - sleep_hrs` (roughly, hours short of the
+recommended nine). Then find the 5 participant-visits with the largest deficit,
+showing only `subject_id`, `visit` and `sleep_deficit`.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: ex-1-4
+abcd |> 
+  mutate(sleep_deficit = 9 - sleep_hrs) |> 
+  arrange(desc(sleep_deficit)) |> 
+  select(subject_id, visit, sleep_deficit) |> 
+  head(5)
+```
+:::
+
+## 8. Missing data {#missing-data}
+
+`NA` means "not available" — the value is absent. Real datasets are full of them,
+ABCD very much included, and R deliberately refuses to guess.
+
+Watch what happens if you ignore them:
+
+```{r}
+#| label: na-trap
+mean(abcd$cognition_score)
+```
+
+`NA`. Not a bug: R is telling you that the average of a set of numbers, one of
+which is unknown, is itself unknown. To say "skip the missing ones and average the
+rest", use `na.rm = TRUE`:
+
+```{r}
+#| label: na-rm
+mean(abcd$cognition_score, na.rm = TRUE)
+```
+
+This is why `na.rm = TRUE` has been scattered through the code above.
+
+### How much is missing?
+
+`is.na()` gives `TRUE`/`FALSE` per value. Since R counts `TRUE` as 1, summing it
+counts the missing values:
+
+```{r}
+#| label: count-na
+abcd |> 
+  summarise(
+    missing_cog    = sum(is.na(cognition_score)),
+    missing_probs  = sum(is.na(total_problems)),
+    missing_screen = sum(is.na(screen_time_hrs))
+  )
+```
+
+Better still, look at whether missingness is spread evenly — because if it is not,
+dropping those rows will bias your results:
+
+```{r}
+#| label: na-by-visit
+abcd |> 
+  group_by(visit) |> 
+  summarise(
+    n           = n(),
+    missing_cog = sum(is.na(cognition_score)),
+    pct_missing = round(100 * mean(is.na(cognition_score)), 1)
+  )
+```
+
+### Dropping rows
+
+`drop_na()` from **tidyr** removes rows with missing values in the columns you
+name:
+
+```{r}
+#| label: drop-na
+abcd_cog <- abcd |> drop_na(cognition_score)
+nrow(abcd)
+nrow(abcd_cog)
+```
+
+::: {.callout-warning}
+## Dropping is a decision, not a cleanup step
+`drop_na()` is easy to type and easy to over-use. Every row you drop is a real
+participant whose data you have chosen to exclude, and if the people with missing
+scores differ systematically from those without, your results shift.
+
+For today, dropping is fine — we are learning the mechanics. **Module 3** covers
+what to actually do about missing data in a longitudinal study, which is a
+genuinely hard problem and not one `drop_na()` solves.
+:::
+
+## 9. Your first plots
+
+**ggplot2** builds a plot in layers, joined by `+`. Two pieces are always present:
+
+- `aes()` — the **aes**thetic mapping: which column goes on which axis
+- a `geom_*()` — the kind of mark to draw
+
+### A histogram: the shape of one variable
+
+```{r}
+#| label: fig-histogram
+#| fig-cap: "Distribution of cognition scores across all visits"
+#| fig-alt: "Histogram of cognition scores, roughly bell-shaped and centred near 100."
+#| warning: false
+abcd |> 
+  ggplot(aes(x = cognition_score)) +
+  geom_histogram(binwidth = 5, fill = "#62272D", colour = "white") +
+  labs(
+    title = "Cognition scores are roughly bell-shaped",
+    x     = "Cognition score",
+    y     = "Number of participant-visits"
+  )
+```
+
+Note the pipe carries the data *in*, and then layers are added with `+`. Mixing
+the two up — writing `|>` between layers — is the most common ggplot2 error there
+is.
+
+### A boxplot: comparing groups
+
+```{r}
+#| label: fig-boxplot
+#| fig-cap: "Total problems by visit"
+#| fig-alt: "Boxplots of total problem scores at baseline, year 1 and year 2, with slightly lower medians at later visits."
+#| warning: false
+abcd |> 
+  ggplot(aes(x = visit, y = total_problems)) +
+  geom_boxplot(fill = "#FDBF6F") +
+  labs(
+    title = "Reported problems drift down slightly across visits",
+    x     = "Visit",
+    y     = "Total problems"
+  )
+```
+
+### A line chart: change over time
+
+For a trend you first have to *compute* the trend — one number per visit — and
+then plot it. Which is the `group_by()` + `summarise()` pattern from
+[section 7](#the-five-verbs-that-do-the-work), piped straight into a plot:
+
+```{r}
+#| label: fig-line
+#| fig-cap: "Mean cognition score at each visit"
+#| fig-alt: "Line chart with points showing mean cognition score rising modestly from baseline through year 2."
+abcd |> 
+  group_by(visit) |> 
+  summarise(mean_cog = mean(cognition_score, na.rm = TRUE)) |> 
+  ggplot(aes(x = visit, y = mean_cog, group = 1)) +
+  geom_line(colour = "#62272D", linewidth = 1) +
+  geom_point(size = 3, colour = "#62272D") +
+  labs(
+    title = "Mean cognition score rises across visits",
+    x     = "Visit",
+    y     = "Mean cognition score"
+  )
+```
+
+`group = 1` looks odd. `visit` is text, not a number, so ggplot2 does not know
+which points to join up; `group = 1` says "these all belong to one line". You will
+need it every time you draw a line over a categorical x-axis.
+
+::: {.callout-note}
+## Exercise 1.5
+Draw a boxplot of `sleep_hrs` by `visit`. Then add `colour = sex` inside `aes()`
+and see what changes.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: ex-1-5
+#| fig-alt: "Boxplots of sleep hours by visit, split by sex."
+#| warning: false
+abcd |> 
+  ggplot(aes(x = visit, y = sleep_hrs, colour = sex)) +
+  geom_boxplot() +
+  labs(x = "Visit", y = "Sleep (hours/night)")
+```
+
+Mapping a column to `colour` splits each box in two and adds a legend
+automatically. That is the pattern for "show me this broken down by group".
+:::
+
+::: {.callout-tip}
+## Going deeper
+More geoms, faceting into small multiples, and how to make a figure that would
+pass in a paper are in the [plot gallery](module1-plot-gallery.qmd). Module 2 is
+devoted to this.
+:::
+
+## 10. Saving your work
+
+A result that only exists in your Console is not a result. `write_csv()` puts a
+table on disk:
+
+```{r}
+#| label: write-out
+visit_summary <- abcd |> 
+  group_by(visit) |> 
+  summarise(
+    n        = n(),
+    mean_cog = mean(cognition_score, na.rm = TRUE),
+    mean_probs = mean(total_problems, na.rm = TRUE)
+  )
+
+write_csv(visit_summary, "output/visit-summary.csv")
+```
+
+And `ggsave()` saves the most recent plot:
+
+```r
+ggsave("output/cognition-by-visit.png", width = 6, height = 4, dpi = 300)
+```
+
+This is why Module 0 had you make an `output/` folder. Keeping saved results
+separate from raw data means you can always delete everything in `output/` and
+rebuild it by re-running the script — which is a decent working definition of a
+reproducible analysis.
+
+## Putting it together
+
+Everything from today, as one pipeline — read, clean, summarise, save:
+
+```{r}
+#| label: full-pipeline
+abcd |> 
+  filter(visit == "baseline") |> 
+  drop_na(cognition_score) |> 
+  mutate(age_years = age_months / 12) |> 
+  group_by(sex) |> 
+  summarise(
+    n            = n(),
+    mean_age     = round(mean(age_years), 1),
+    mean_cog     = round(mean(cognition_score), 1),
+    mean_screen  = round(mean(screen_time_hrs, na.rm = TRUE), 1)
+  )
+```
+
+Read it as one sentence: take the data, keep baseline visits, drop rows missing a
+cognition score, add an age-in-years column, split by sex, and report these four
+numbers.
+
+Two hours ago that was an opaque wall of symbols.
+
+## What you can now do
+
+- Run code from a script, and store results with `<-`
+- Read function calls, `c()`, `$` and `library()` when you meet them
+- Load a CSV and inspect it before trusting it
+- Chain steps with `|>`
+- `filter()`, `select()`, `arrange()`, `mutate()`, `group_by()` + `summarise()`
+- Spot missing data, count it, and decide about it deliberately
+- Build histograms, boxplots and line charts, and save them
+
+## Going further
+
+Optional, and none of it is assumed in Module 2:
+
+- [Data types deep-dive](module1-data-types.qmd) — coercion and factors in detail
+- [Plot gallery](module1-plot-gallery.qmd) — more geoms and faceting
+- [R for Data Science](https://r4ds.hadley.nz), chapters 1–4 — the same ground, at
+  book length
+- The [dplyr cheatsheet](https://rstudio.github.io/cheatsheets/data-transformation.pdf) —
+  one page, keep it next to you
+
+Next: [Module 2 · Data Exploration & Visualization →](module2.qmd) on Sep 24, where
+the pipelines get longer and the plots get good.

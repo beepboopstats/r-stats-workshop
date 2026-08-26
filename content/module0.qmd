@@ -1,0 +1,244 @@
+---
+title: "Module 0 · Getting Set Up"
+subtitle: "Self-paced · do this before Module 1"
+---
+
+This module is housekeeping, and it is the most boring page on this site. Work
+through it anyway. It takes about 30 minutes, and it is the difference between
+spending the first half hour of Module 1 fighting an installer or actually
+writing code.
+
+There is nothing to submit. When you reach the [checklist](#checklist) at the
+bottom and every box is ticked, you are ready.
+
+## What you are installing, and why
+
+Two separate things, and people mix them up constantly:
+
+| | What it is |
+|:--|:--|
+| **R** | The language itself. Does the actual computing. On its own, it is a bare window. |
+| **RStudio** | The workbench you sit at to write R. Editor, plots, files, help — all in one place. |
+
+You need both, and you install **R first**. RStudio looks for R when it starts up;
+if R is not there yet, RStudio will not find it.
+
+::: {.callout-important}
+## If your laptop is managed by your institution
+Many hospital and university machines block software installation. Do not spend
+an evening fighting it — skip to [Option B: Posit Cloud](#option-b-posit-cloud),
+which runs entirely in your browser and needs nothing installed. You can follow
+every module that way.
+:::
+
+## Option A: install on your own computer
+
+### Step 1 — Install R
+
+Go to the [R Project download page](https://cloud.r-project.org) and pick your
+system:
+
+- **Windows** — click *Download R for Windows* → *base* → *Download R-x.x.x for Windows*.
+  Run the installer and accept the defaults.
+- **macOS** — click *Download R for macOS*, then pick the `.pkg` that matches your
+  chip. If your Mac is from 2020 or later it is almost certainly **Apple silicon
+  (arm64)**; older Intel Macs use the other one. If you install the wrong one R
+  will not start, so check: **Apple menu → About This Mac**.
+- **Linux** — follow the distribution-specific instructions on that page.
+
+### Step 2 — Install RStudio
+
+Go to the [RStudio Desktop download page](https://posit.co/download/rstudio-desktop/)
+and install the free version for your system. Accept the defaults.
+
+### Step 3 — Open RStudio and find your way around
+
+Open **RStudio** — not R. (On your machine there will be an application called
+plain "R" too. You will not use it. If you see a plain white window with a `>`
+and nothing else, you opened the wrong one.)
+
+You will see four panes. Only two matter today:
+
+| Pane | Where | What it is for |
+|:--|:--|:--|
+| **Console** | bottom-left | Where code *runs*. Type here for one-off, throwaway commands. |
+| **Editor** | top-left | Where code is *saved*. Write your script here. This is the one that matters. |
+| Environment | top-right | Lists the objects you have created. |
+| Files / Plots / Help | bottom-right | File browser, your plots, and documentation. |
+
+::: {.callout-tip}
+## The one habit worth forming now
+Write code in the **Editor**, not the Console. Then run the current line with
+**Ctrl+Enter** (**Cmd+Enter** on macOS). Code in the Editor can be saved, re-run
+and fixed. Code typed into the Console vanishes when you close RStudio, and
+nothing is more demoralising than losing a working analysis because it only ever
+existed in the Console.
+:::
+
+## Option B: Posit Cloud
+
+If installing is blocked, or you just want to start immediately:
+
+1. Go to [posit.cloud](https://posit.cloud) and create a free account.
+2. Click **New Project** → **New RStudio Project**.
+
+You now have RStudio in a browser tab. It looks and behaves like the desktop
+version, and everything in every module works there. The free tier is generous
+enough for this workshop.
+
+The one difference: your files live in the cloud project rather than on your
+laptop. To get a data file in, use the **Upload** button in the Files pane
+(bottom-right).
+
+## Set up a project folder
+
+R needs to know *where* to look for your data files. The way this goes wrong is
+so common that it is worth heading off before it happens.
+
+In RStudio: **File → New Project → New Directory → New Project**. Name it
+`r-workshop`, choose somewhere you will find it again (Desktop or Documents), and
+click **Create Project**.
+
+Then make two folders inside it. In the Files pane (bottom-right), click
+**New Folder** twice and create:
+
+```
+r-workshop/
+├── r-workshop.Rproj    <- created for you; double-click this to open the project
+├── data/               <- the workshop datasets go here
+└── output/             <- things you save: plots, cleaned data
+```
+
+Why bother? Because opening the project sets R's *working directory* to that
+folder. Which means that from then on, this works:
+
+```r
+read_csv("data/abcd-synthetic.csv")
+```
+
+instead of this:
+
+```r
+read_csv("C:/Users/YourName/Desktop/stuff/r workshop v2 FINAL/data/abcd-synthetic.csv")
+```
+
+The short version is called a **relative path** — relative to the project folder.
+It keeps working when you move the folder, rename your laptop, or send the project
+to a colleague. The long one breaks the moment anything changes.
+
+::: {.callout-warning}
+## You may see `setwd()` in older tutorials
+`setwd("C:/Users/...")` sets the working directory by hand. Avoid it. It hard-codes
+a path that exists only on your computer, so the script breaks for everyone else —
+including future you on a new laptop. Opening an RStudio Project does the same job
+correctly and automatically.
+:::
+
+### Get the data
+
+[Download `abcd-synthetic.csv`](../data/abcd-synthetic.csv) and put it in
+the `data/` folder you just made.
+
+This is a **synthetic** dataset — generated by a script, containing no real
+participant data — but it is deliberately shaped like an ABCD longitudinal
+release: one row per participant per visit, with realistic gaps where
+measurements are missing.
+
+## Install the packages we use
+
+A **package** is add-on code that someone else wrote and shared. R comes with a
+lot built in, but the tools we teach come from packages, so we install them once.
+
+In the **Console** (bottom-left), paste this and press Enter:
+
+```r
+install.packages(c("dplyr", "ggplot2", "readr", "tidyr"))
+```
+
+This takes a few minutes and prints a great deal of scrolling text. That is
+normal. Some warnings in that output are also normal.
+
+::: {.callout-note}
+## You may have heard of "the tidyverse"
+These four packages are all part of the **tidyverse**, a family of R packages
+that share a common style. You can install all of it at once with
+`install.packages("tidyverse")`, and many tutorials do. We install the four we
+actually use, and load them one by one, so that you learn *which package each
+function comes from* rather than treating it all as one magic blob.
+:::
+
+Installing is a **one-time** step. Loading, which you do in every new session, is
+a different thing — that is `library()`, and Module 1 covers it.
+
+## Check that it worked
+
+Paste this whole block into the Console. It loads each package and prints what you
+have.
+
+```{r}
+#| label: verification
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(tidyr)
+
+cat("R version:  ", R.version.string, "\n")
+cat("dplyr:      ", as.character(packageVersion("dplyr")), "\n")
+cat("ggplot2:    ", as.character(packageVersion("ggplot2")), "\n")
+cat("readr:      ", as.character(packageVersion("readr")), "\n")
+cat("tidyr:      ", as.character(packageVersion("tidyr")), "\n")
+
+# The |> pipe needs R 4.1 or newer. If this prints 3 numbers, you are set.
+c(1, 4, 9) |> sqrt()
+```
+
+You should see version numbers and then three numbers. Your versions will not
+match these exactly — anything recent is fine.
+
+::: {.callout-important}
+## If the last line errored
+An error on `c(1, 4, 9) |> sqrt()` means your R is older than 4.1 and does not
+have the `|>` pipe, which we use throughout the workshop. Go back to
+[Step 1](#step-1-install-r) and install the current version of R. Installing a new
+R does not delete the old one, and RStudio will pick up the newer one.
+:::
+
+::: {.callout-tip collapse="true"}
+## "There is no package called ..."
+This means the install did not finish, usually because it was interrupted or the
+package name was mistyped. Re-run the `install.packages()` line above and watch
+the tail of the output for a line saying which package failed and why.
+
+On Windows, if it asks *"Do you want to install from sources the packages which
+need compilation?"*, answer **no**.
+:::
+
+## Optional: get a head start
+
+Not required — Module 1 assumes none of it. But if you would like to read ahead:
+
+- [R for Data Science](https://r4ds.hadley.nz) — the standard free textbook for
+  exactly the style we teach. Chapters 1–4 overlap with Module 1.
+- [Posit's dplyr cheatsheet](https://rstudio.github.io/cheatsheets/data-transformation.pdf) —
+  one page, worth printing and keeping next to you during the live sessions.
+- A [past workshop recording](https://www.youtube.com/watch?v=7t9JhBJm1pg) on the
+  Module 2 material.
+
+## Checklist {#checklist}
+
+Before Module 1 on **Sep 10, 2026**:
+
+- [ ] R installed (or a Posit Cloud project open)
+- [ ] RStudio opens, and I can tell the Console from the Editor
+- [ ] An RStudio Project called `r-workshop`, with `data/` and `output/` folders
+- [ ] `abcd-synthetic.csv` saved inside `data/`
+- [ ] `install.packages(c("dplyr", "ggplot2", "readr", "tidyr"))` has been run
+- [ ] The check block above prints version numbers and three numbers
+- [ ] I know how to run a line with Ctrl+Enter / Cmd+Enter
+
+Stuck on any of these? Email us before the session rather than during it —
+**Andrew Moore** ([mooreand@musc.edu](mailto:mooreand@musc.edu)) or **Billu Das**
+([biplabendu.das@gmail.com](mailto:biplabendu.das@gmail.com)) — and we will sort
+it out in advance.
+
+Once the boxes are ticked, you are ready for [Module 1 →](module1.qmd)

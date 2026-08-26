@@ -1,0 +1,224 @@
+---
+title: "Deep-dive · Data Types, Coercion and Factors"
+subtitle: "Optional companion to Module 1"
+---
+
+Optional. Nothing in Module 2 assumes it. Read it when a column turns out to be
+the wrong type and you want to know why.
+
+```{r}
+#| label: setup
+library(readr)
+library(dplyr)
+
+abcd <- read_csv("data/abcd-synthetic.csv")
+```
+
+## The types, properly
+
+```{r}
+#| label: types
+class(10.5)        # numeric  (specifically "double")
+class(10L)         # integer  -- the L suffix forces a whole number
+class("baseline")  # character
+class(TRUE)        # logical
+class(NA)          # logical, oddly -- see below
+```
+
+`class()` tells you what something is. `is.numeric()`, `is.character()` and
+friends ask yes/no questions, which is more useful inside code:
+
+```{r}
+#| label: is-functions
+is.numeric(abcd$age_months)
+is.character(abcd$visit)
+```
+
+## Coercion, and why your numbers became text
+
+R will not let a vector hold mixed types. When you try, it promotes everything to
+the most accommodating type, following this one-way street:
+
+```
+logical  →  integer  →  double  →  character
+```
+
+Each step can represent everything to its left, so nothing is lost — but the
+result may not be what you wanted:
+
+```{r}
+#| label: coercion-chain
+c(TRUE, 1L)          # logical joins integer   -> integer
+c(1L, 2.5)           # integer joins double    -> double
+c(2.5, "hello")      # double joins character  -> character
+```
+
+That last one is the one that bites. A single stray text value anywhere in a
+spreadsheet column turns the entire column into text:
+
+```{r}
+#| label: coercion-trap
+ages <- c(118, 121, "not recorded", 130)
+class(ages)
+```
+
+And once it is text, arithmetic fails:
+
+```{r}
+#| label: coercion-error
+#| error: true
+mean(ages)
+```
+
+In real data the culprit is usually a placeholder someone typed into a numeric
+column — `"n/a"`, `"missing"`, `"999"`, `"<1"`, or a stray footnote marker.
+
+### Fixing it
+
+`as.numeric()` converts back. Anything that is not a number becomes `NA`, with a
+warning telling you it happened:
+
+```{r}
+#| label: as-numeric
+#| warning: true
+ages_fixed <- as.numeric(ages)
+ages_fixed
+mean(ages_fixed, na.rm = TRUE)
+```
+
+That warning — `NAs introduced by coercion` — is useful, not noise. It is R saying
+"I threw something away". If you see it unexpectedly, go and look at what got
+discarded before moving on.
+
+Better still, tell `read_csv()` about the placeholders up front so the column
+arrives numeric in the first place:
+
+```r
+read_csv("data/my-file.csv", na = c("", "NA", "n/a", "missing", "999"))
+```
+
+## `NA` in more detail
+
+`NA` is not zero, and not an empty string. It means *unknown*, and R propagates
+that unknown-ness through everything it touches:
+
+```{r}
+#| label: na-propagation
+NA + 1
+NA > 5
+NA == NA     # not TRUE -- two unknowns may or may not be equal
+```
+
+That last line is why you cannot test for missingness with `==`:
+
+```{r}
+#| label: na-test
+x <- c(1, NA, 3)
+x == NA        # useless
+is.na(x)       # this is the way
+```
+
+There is one exception worth knowing, because it looks inconsistent until you see
+the logic:
+
+```{r}
+#| label: na-logical
+NA | TRUE      # TRUE  -- "unknown OR true" is true whatever the unknown is
+NA & FALSE     # FALSE -- "unknown AND false" is false whatever the unknown is
+```
+
+## Factors
+
+A **factor** is a categorical variable with a fixed, known set of possible values,
+called its **levels**. It looks like text and behaves like a number underneath.
+
+```{r}
+#| label: factor-basic
+visit_f <- factor(abcd$visit)
+levels(visit_f)
+```
+
+Two reasons to care.
+
+### Reason 1: controlling order
+
+`factor()` sorts levels alphabetically by default. Sometimes that is wrong:
+
+```{r}
+#| label: factor-alpha
+levels(factor(c("baseline", "year_1", "year_2")))
+```
+
+Here alphabetical happens to be correct — `b` before `y`. Now watch it fail with
+more realistic visit labels:
+
+```{r}
+#| label: factor-alpha-fail
+levels(factor(c("baseline", "2_year", "1_year")))
+```
+
+`"1_year"` sorts before `"2_year"` before `"baseline"`, so a plot would show the
+timeline backwards. Set the order explicitly:
+
+```{r}
+#| label: factor-order
+visits <- c("baseline", "2_year", "1_year")
+factor(visits, levels = c("baseline", "1_year", "2_year")) |> levels()
+```
+
+This is *the* reason factors matter in practice: **ggplot2 and `group_by()` follow
+factor level order**, so setting levels is how you control the order of bars,
+boxes and legend entries.
+
+```{r}
+#| label: factor-in-pipeline
+abcd |> 
+  mutate(visit = factor(visit, levels = c("baseline", "year_1", "year_2"))) |> 
+  count(visit)
+```
+
+### Reason 2: statistical models care
+
+In Module 3, when you fit a model with a categorical predictor, R uses the **first
+level as the reference group** — every coefficient is expressed relative to it.
+Changing which level is first changes how the output reads. `relevel()` picks the
+reference:
+
+```{r}
+#| label: relevel
+sex_f <- factor(abcd$sex)
+levels(sex_f)
+levels(relevel(sex_f, ref = "M"))
+```
+
+### The classic factor trap
+
+Converting a factor straight to numeric gives you the *level codes*, not the
+values:
+
+```{r}
+#| label: factor-trap
+f <- factor(c("10", "20", "30"))
+as.numeric(f)              # 1 2 3 -- the internal codes. Wrong.
+as.numeric(as.character(f))  # 10 20 30 -- correct
+```
+
+Go via `as.character()` every time. This one has silently corrupted a great many
+analyses.
+
+## Checking a fresh dataset
+
+A habit worth building. Before analysing anything:
+
+```{r}
+#| label: sanity-check
+glimpse(abcd)
+
+# Any column that should be numeric but arrived as character?
+abcd |> summarise(across(everything(), ~ class(.x)[1]))
+```
+
+If a column you expect to be numeric shows up as `character`, stop and find the
+offending value before doing anything else.
+
+Back to [Module 1](module1.qmd).

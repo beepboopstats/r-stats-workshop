@@ -1,0 +1,34 @@
+---
+title: "Module 4 · Applied Projects"
+subtitle: "Thu Nov 12, 2026 · noon–2pm PT"
+---
+
+::: {.callout-note}
+## Materials coming soon
+This page will fill in before the session.
+:::
+
+::: {.callout-important}
+## Module 3 is required
+[Module 3](module3.qmd) is a prerequisite. This session is hands-on project work,
+not instruction, and it assumes you can already choose and run an appropriate
+statistical test.
+:::
+
+A session for the intermediate R user to practise **end-to-end data analysis**.
+
+We use dummy datasets organised the same way as the main ABCD dataset to ask basic
+scientific questions. You will:
+
+- build a hypothesis
+- decide on the appropriate statistical test
+- use R to run the analysis and produce the visualisations
+
+The goal is to leave with results of the kind you would put on a **scientific
+poster** at a conference.
+
+## Preparation
+
+- [Module 3](module3.qmd) — required
+- Bring a question you are curious about, if you have one. Otherwise we supply
+  them.

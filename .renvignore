@@ -1,0 +1,4 @@
+# Rendered site output -- contains a copy of scripts/, would be scanned twice
+docs/
+# Untracked scratch + real participant data
+dev/

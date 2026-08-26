@@ -1,0 +1,31 @@
+---
+title: "Module 2 · Data Exploration, Visualization & Descriptive Statistics"
+subtitle: "Thu Sep 24, 2026 · noon–2pm PT"
+---
+
+::: {.callout-note}
+## Materials coming soon
+This page will fill in before the session. In the meantime,
+[Module 1](module1.qmd) is the preparation.
+:::
+
+**Designed for** someone with a basic knowledge of R and RStudio — which
+[Module 1](module1.qmd) provides.
+
+Building on Module 1, we go deeper into:
+
+- using tidy, modern practices to build **data pipelines** in R
+- writing efficient code to **transform and summarise** datasets
+- using **ggplot2** to create publication-ready figures
+
+## Preparation
+
+- Work through [Module 1](module1.qmd), or be comfortable with `filter()`,
+  `mutate()`, `group_by()` + `summarise()` and the `|>` pipe
+- Have R, RStudio and the packages from [Module 0](module0.qmd) working
+
+## Resources
+
+- A [past workshop on this material](https://www.youtube.com/watch?v=7t9JhBJm1pg)
+- The [plot gallery](module1-plot-gallery.qmd) from Module 1 is a preview of where
+  this module starts

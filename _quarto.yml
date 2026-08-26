@@ -1,0 +1,70 @@
+project:
+  type: website
+  execute-dir: project
+  output-dir: docs
+  render:
+    - index.qmd
+    - content/*.qmd
+  resources:
+    - data/
+    - scripts/
+
+execute:
+  echo: true       # this is a teaching site -- code is the content
+  warning: true    # participants should see the warnings they will hit
+  message: false
+
+website:
+  title: "R + Statistics Workshop"
+  description: "A four-part workshop series teaching R programming and statistics with longitudinal study data, for ABCD research staff and consortium members."
+  site-url: https://beepboopstats.github.io/r-stats-workshop/
+  open-graph: true
+  reader-mode: false
+  page-footer:
+    left: "© Beep Boop Stats"
+    right: "Backed by the ABCD Professional Development Workgroup & ABCD-ReproNim"
+  navbar:
+    pinned: true
+    search: true
+    left:
+      - text: "Home"
+        file: index.qmd
+      - text: "Module 0 · Setup"
+        file: content/module0.qmd
+      - text: "Module 1 · Foundations"
+        file: content/module1.qmd
+      - text: "Upcoming"
+        menu:
+          - text: "Module 2 · Data Exploration & Visualization"
+            file: content/module2.qmd
+          - text: "Module 3 · Inferential Statistics"
+            file: content/module3.qmd
+          - text: "Module 4 · Applied Projects"
+            file: content/module4.qmd
+    tools:
+      - icon: github
+        href: https://github.com/beepboopstats/r-stats-workshop
+
+format:
+  html:
+    theme:
+      light:
+        - pulse
+        - assets/css/styles.scss
+      dark:
+        - darkly
+        - assets/css/styles.scss
+    css: assets/css/styles.scss
+    fontsize: 1.1em
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-expand: 1
+    code-fold: false      # never hide teaching code
+    code-copy: true
+    code-overflow: wrap
+    code-link: false
+    df-print: default
+    link-external-newwindow: true
+
+format-links: []
