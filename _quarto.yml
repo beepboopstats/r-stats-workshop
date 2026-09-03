@@ -17,6 +17,7 @@ execute:
 
 website:
   title: "R + Statistics Workshop"
+  google-analytics: "G-LXSX23EQ95"
   description: "A four-part workshop series teaching R programming and statistics with longitudinal study data, for ABCD research staff and consortium members."
   site-url: https://www.beepboopstats.com/r-stats-workshop
   favicon: assets/img/favicon.png
