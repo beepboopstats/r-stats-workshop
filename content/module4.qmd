@@ -23,8 +23,9 @@ statistical test.
 
 A session for the intermediate R user to practise **end-to-end data analysis**.
 
-We use dummy datasets organised the same way as the main ABCD dataset to ask basic
-scientific questions. You will:
+We use `data/data.RDS` — a synthetic dataset organised the same way as the main
+ABCD dataset, described in full on the [dataset reference page](data.qmd) — to ask
+basic scientific questions. You will:
 
 - build a hypothesis
 - decide on the appropriate statistical test
@@ -36,5 +37,9 @@ poster** at a conference.
 ## Preparation
 
 - [Module 3](module3.qmd) — required
+- Download [the dataset and its dictionaries](data.qmd#get-the-files) into your
+  project's `data/` folder
+- Have a browse of the [variable list](data.qmd#browse-the-variables) — the
+  question you bring has to be answerable from these 53 columns
 - Bring a question you are curious about, if you have one. Otherwise we supply
   them.

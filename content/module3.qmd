@@ -30,12 +30,22 @@ Module 3 is a **prerequisite for [Module 4](module4.qmd)**, which is a hands-on
 project session assuming you can already choose and run a test.
 :::
 
+## The data
+
+We work on `data/data.RDS`, the same ABCD-shaped dataset as
+[Module 2](module2.qmd) — 500 participants across five annual visits. Two of its
+properties drive this session: about 27% of cells are missing, and the missingness
+is *structured* rather than random, so complete-case analysis is never free. The
+[dataset reference page](data.qmd) sets out where the gaps come from.
+
 ## Preparation
 
 - [Module 2](module2.qmd), or equivalent comfort with tidyverse pipelines and
   ggplot2
 - The missing-data section of [Module 1](module1.qmd#missing-data) — we pick that
   thread up properly here
+- Download [the dataset and its dictionaries](data.qmd#get-the-files) into your
+  project's `data/` folder
 
 ## Resources
 

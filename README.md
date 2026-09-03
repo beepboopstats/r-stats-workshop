@@ -14,8 +14,11 @@ study.
 | 3 | Oct 29, 2026 | Inferential statistics |
 | 4 | Nov 12, 2026 | Applied projects |
 
-Materials teach tidyverse style R with the native `|>` pipe, using a synthetic
-ABCD-shaped longitudinal dataset that contains no real participant data.
+Materials teach tidyverse style R with the native `|>` pipe, using synthetic
+ABCD-shaped longitudinal datasets that contain no real participant data. Module 1
+uses a small CSV with plain English column names; Modules 2-4 use a fuller dataset
+with real ABCD variable names, coded factor levels and structured missing data,
+documented at [content/data.qmd](content/data.qmd).
 
 ## Working on the site locally
 
@@ -28,10 +31,12 @@ quarto preview                 # live-reload while editing
 quarto render                  # build the site into docs/
 ```
 
-To regenerate the synthetic teaching dataset (seeded, so output is identical):
+To regenerate the synthetic teaching datasets (both seeded, so output is
+identical on every run):
 
 ```sh
-Rscript R/generate-workshop-data.R
+Rscript R/generate-workshop-data.R      # data/abcd-synthetic.csv  (Module 1)
+Rscript R/generate-abcd-shaped-data.R   # data/data.RDS           (Modules 2-4)
 ```
 
 ## Layout
@@ -41,7 +46,7 @@ index.qmd                 landing page (site root)
 content/                  one page per module, plus Module 1 deep-dives
 R/                        helper + data-generation scripts
 scripts/                  live-coding skeletons handed to participants
-data/                     synthetic teaching data (tracked)
+data/                     synthetic teaching data + dictionaries (tracked)
 output/                   where live-coding artifacts get saved (contents ignored)
 assets/                   SCSS theme and images
 docs/                     rendered site (gitignored; built and published by CI)

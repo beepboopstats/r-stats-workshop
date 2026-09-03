@@ -24,11 +24,23 @@ Building on Module 1, we go deeper into:
 - writing efficient code to **transform and summarise** datasets
 - using **ggplot2** to create publication-ready figures
 
+## The data
+
+From this module onward we move to a larger, more realistic dataset:
+`data/data.RDS` — 500 participants across five annual visits, with real ABCD
+variable names, coded factor levels and structured missing data.
+
+The [dataset reference page](data.qmd) explains what is in it, how to read the
+variable names, and where the value labels live. Get the three files from there
+before the session.
+
 ## Preparation
 
 - Work through [Module 1](module1.qmd), or be comfortable with `filter()`,
   `mutate()`, `group_by()` + `summarise()` and the `|>` pipe
 - Have R, RStudio and the packages from [Module 0](module0.qmd) working
+- Download [the dataset and its dictionaries](data.qmd#get-the-files) into your
+  project's `data/` folder
 
 ## Resources
 

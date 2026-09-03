@@ -30,13 +30,13 @@ Zoom link by email.
 
 | Module | Date | Topic | Assumes |
 |:--|:--|:--|:--|
-| [**0**](content/module0.qmd) | self-paced | Get your computer set up | Nothing |
-| [**1**](content/module1.qmd) | Thu **Sep 10, 2026** | Foundations of R programming | Never used R |
-| [**2**](content/module2.qmd) | Thu **Sep 24, 2026** | Data exploration, visualization & descriptive statistics | Module 1 |
-| [**3**](content/module3.qmd) | Thu **Oct 29, 2026** | Inferential statistics | Module 2 |
-| [**4**](content/module4.qmd) | Thu **Nov 12, 2026** | Applied projects | **Module 3 required** |
+| [**M0**](content/module0.qmd) | self-paced | Get your computer set up | Nothing |
+| [**M1**](content/module1.qmd) | Thu **Sep 10, 2026** | Foundations of R programming | Never used R |
+| [**M2**](content/module2.qmd) | Thu **Sep 24, 2026** | Data exploration, visualization & descriptive statistics | Module 1 |
+| [**M3**](content/module3.qmd) | Thu **Oct 29, 2026** | Inferential statistics | Module 2 |
+| [**M4**](content/module4.qmd) | Thu **Nov 12, 2026** | Applied projects | **Module 3 required** |
 
-: {.schedule tbl-colwidths="[8,20,52,20]"}
+: {.schedule tbl-colwidths="[8,25,52,20]"}
 
 ## Start here
 
@@ -97,13 +97,22 @@ newcomers and the style most modern R code you will meet is written in. We
 introduce just enough base R notation along the way for you to read code you
 find elsewhere.
 
-All examples run on a **synthetic dataset** shaped like an ABCD longitudinal
-release: one row per participant per visit, with realistic missing data. It
-contains no real participant data.
+All examples run on **synthetic datasets** shaped like an ABCD longitudinal
+release: one row per participant per visit, with realistic missing data. They
+contain no real participant data.
 
-[Download the dataset](data/abcd-synthetic.csv){.btn .btn-outline-primary .btn-sm}
+There are two, because a first hour in R should be spent learning R rather than
+decoding variable names:
+
+- **Module 1** uses a small CSV with three visits and plain English column names.
+- **Modules 2, 3 and 4** use a fuller dataset — 500 participants across five annual
+  visits, with real ABCD variable names, coded factor levels and structured missing
+  data. The [dataset reference page](content/data.qmd) explains what is in it.
+
+[Module 1 dataset](data/abcd-synthetic.csv){.btn .btn-outline-primary .btn-sm}
+[Modules 2–4 dataset](content/data.qmd#get-the-files){.btn .btn-outline-primary .btn-sm}
 
 ## Questions?
 
-Contact **Andrew Moore** ([mooreand@musc.edu](mailto:mooreand@musc.edu)) or
+Contact **Andrew Moore** ([ajm9311@ou.edu](mailto:ajm9311@ou.edu)) or
 **Billu Das** ([biplabendu.das@gmail.com](mailto:biplabendu.das@gmail.com)).

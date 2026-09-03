@@ -23,7 +23,7 @@ visits     <- c("baseline", "year_1", "year_2")
 
 # ---- Subject-level attributes (fixed across visits) --------------
 subjects <- data.frame(
-  subject_id = sprintf("S-%04d", seq_len(n_subjects)),
+  subject_id = sprintf("sub-%04d", seq_len(n_subjects)),
   site       = sample(sprintf("S%02d", 1:5), n_subjects, replace = TRUE),
   sex        = sample(c("F", "M"), n_subjects, replace = TRUE),
   # Baseline age in months (ABCD enrols at 9-10 years old)

@@ -108,6 +108,11 @@ mean(abcd$cognition_score, na.rm = TRUE)
 # Piped - read left to right, as "and then"
 abcd$cognition_score |> mean(na.rm = TRUE)
 
+# Even better
+abcd |> 
+  pull(cognition_score) |> 
+  mean(na.rm = TRUE)
+
 # Shortcut for |> is Ctrl+Shift+M / Cmd+Shift+M
 
 

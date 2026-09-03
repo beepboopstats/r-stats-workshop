@@ -1,13 +1,20 @@
 ---
-title: "Module 1 · Foundations of R Programming"
-subtitle: "Thu Sep 10, 2026 · noon–2pm PT"
+title: "Module 1: Foundations of R Programming"
+subtitle: "Biplabendu [ Billu ] Das"
 pagetitle: "Module 1: Foundations of R Programming | ABCD R Workshop"
 description-meta: "Learn R from scratch: read data with readr, wrangle it with dplyr and the |> pipe, handle missing values, and build your first ggplot2 histograms and boxplots."
 open-graph:
   description: "Learn R from scratch: read data with readr, wrangle it with dplyr and the |> pipe, handle missing values, and build your first ggplot2 plots."
 twitter-card:
   description: "Learn R from scratch: read data with readr, wrangle it with dplyr and the |> pipe, handle missing values, and build your first ggplot2 plots."
+editor_options: 
+  chunk_output_type: console
 ---
+
+::: {.callout-warning}
+# Page Under Development
+This page is under active development. The contents might change.
+:::
 
 This module is for someone who has **never used R**. By the end of two hours you
 will have read a real dataset into R, pulled it apart to answer questions about

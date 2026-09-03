@@ -1,0 +1,379 @@
+---
+title: "Deep-dive · The ABCD-Shaped Dataset"
+subtitle: "The dataset used in Modules 2, 3 and 4"
+pagetitle: "ABCD-Shaped Dataset & Data Dictionary | ABCD R Workshop"
+description-meta: "A synthetic longitudinal dataset shaped like an ABCD release: 500 participants across 5 sessions, 53 variables, a searchable data dictionary and coded factor levels."
+open-graph:
+  description: "A synthetic ABCD-shaped dataset with a searchable data dictionary — 500 participants, 5 sessions, 53 variables, structured missing data."
+twitter-card:
+  description: "A synthetic ABCD-shaped dataset with a searchable data dictionary — 500 participants, 5 sessions, 53 variables, structured missing data."
+---
+
+```{r}
+#| label: page-setup
+#| include: false
+library(reactable)
+source("R/reactable_utils.R")
+```
+
+Modules 2, 3 and 4 all run on one file: `data/data.RDS`. It is bigger and messier
+than the Module 1 dataset, and deliberately so — it is built to behave like a real
+ABCD release, down to the variable names, the coded factor levels, and the shape of
+the missing data.
+
+This page is the reference for it. Come back here whenever you need to look up what
+a column means.
+
+::: {.callout-important}
+## The data is not real
+Every row is simulated. No real participant contributes a row, a value or a record.
+The *shape* was fitted from a de-identified ABCD extract — column names, variable
+types, level sets, means, SDs and missingness rates — and the extract was then set
+aside. Only those summary numbers live in the generator,
+[`R/generate-abcd-shaped-data.R`](https://github.com/beepboopstats/r-stats-workshop/blob/main/R/generate-abcd-shaped-data.R).
+:::
+
+## Get the files
+
+Three files. Put all three in the `data/` folder of your RStudio Project — the same
+place `abcd-synthetic.csv` went in [Module 0](module0.qmd#set-up-a-project-folder).
+
+[data.RDS](../data/data.RDS){.btn .btn-outline-primary .btn-sm}
+[data_dictionary.csv](../data/data_dictionary.csv){.btn .btn-outline-primary .btn-sm}
+[data_dictionary_levels.csv](../data/data_dictionary_levels.csv){.btn .btn-outline-primary .btn-sm}
+
+| File | What it holds |
+|:--|:--|
+| `data.RDS` | The data itself — one row per participant per visit |
+| `data_dictionary.csv` | One row per **variable**: what it is, who reported it, which instrument it came from |
+| `data_dictionary_levels.csv` | One row per **level** of every coded variable: `1` means Male, `2` means Female, and so on |
+
+A real ABCD release arrives exactly like this: data in one place, meaning in
+another. Learning to work with the pair is part of the point.
+
+## Load it
+
+```{r}
+#| label: load
+library(readr)
+library(dplyr)
+
+data <- readRDS("data/data.RDS")
+
+dict <- read_csv("data/data_dictionary.csv")
+levels_dict <- read_csv("data/data_dictionary_levels.csv")
+```
+
+`.RDS` is R's own file format, so `readRDS()` needs no package and takes no
+arguments beyond the path. It also preserves everything: factors stay factors, and
+the visit timestamp stays a date-time. A CSV would lose both, and you would have to
+rebuild them by hand every time you opened the file.
+
+```{r}
+#| label: dims
+dim(data)
+```
+
+**2,295 rows and 53 columns** — 500 participants, each with up to five visits.
+
+## The shape
+
+One row is **one participant at one visit**. Two columns identify that row:
+
+```{r}
+#| label: keys
+data |>
+  select(participant_id, session_id, ab_g_dyn__visit_age) |>
+  head(5)
+```
+
+Neither column identifies a row on its own — you need the pair. That is what makes
+this a **longitudinal** dataset, and it is the reason nearly everything in Modules 3
+and 4 has to think about the fact that the five rows belonging to `sub-0001` are not
+five independent observations.
+
+The five sessions are annual visits:
+
+| `session_id` | Visit |
+|:--|:--|
+| `ses-00A` | Baseline |
+| `ses-01A` | 1-year follow-up |
+| `ses-02A` | 2-year follow-up |
+| `ses-03A` | 3-year follow-up |
+| `ses-04A` | 4-year follow-up |
+
+```{r}
+#| label: sessions
+count(data, session_id)
+```
+
+The counts fall because participants drop out — 500 at baseline, 414 still present
+four years later. Nobody who leaves comes back.
+
+## How ABCD names its variables
+
+The column names look forbidding until you know they are structured. Read them
+left to right, splitting on the **double** underscore:
+
+```
+nt_y_stq__screen__wkdy_sum
+│  │ │    │       │
+│  │ │    │       └── the statistic: weekday sum
+│  │ │    └────────── the scale: screen time
+│  │ └─────────────── the instrument: Screen Time Questionnaire
+│  └───────────────── who reported it: y = youth, p = parent, g = general
+└──────────────────── the domain: nt = Novel Technologies
+```
+
+Eight domain prefixes appear in this dataset:
+
+| Prefix | Domain |
+|:--|:--|
+| `ab` | ABCD (General) — IDs, site, visit and demographic variables |
+| `fc` | Friends, Family, & Community |
+| `mh` | Mental Health |
+| `mr` | Imaging (structural MRI) |
+| `nc` | Neurocognition |
+| `nt` | Novel Technologies (screen use) |
+| `ph` | Physical Health |
+| `su` | Substance Use |
+
+Once that clicks, `mh_p_cbcl__synd__int_sum` reads as *Mental Health · parent-reported ·
+Child Behavior Checklist · syndrome scale · internalizing · sum* without looking
+anything up. It also means `select()` helpers do real work — `starts_with("nc_")`
+gives you every cognition variable at once.
+
+## Browse the variables
+
+All 53 columns, grouped by domain. Search, filter, sort, expand a domain, or
+download the whole table as a CSV.
+
+```{r}
+#| label: dict-table
+#| echo: false
+tibble(name = names(data)) |>
+  left_join(select(dict, name, domain, source, label), by = "name") |>
+  mutate(
+    domain = if_else(is.na(domain), "Identifiers", domain),
+    source = if_else(is.na(source), "General", source),
+    label  = case_when(
+      name == "participant_id" ~ "Participant identifier",
+      name == "session_id"     ~ "Session (visit) identifier",
+      .default = label
+    )
+  ) |>
+  grouped_reactable(
+    group_var = "domain",
+    id = "data-dict",
+    columns = list(
+      name   = reactable::colDef(maxWidth = 260),
+      domain = reactable::colDef(maxWidth = 200),
+      source = reactable::colDef(maxWidth = 110),
+      label  = reactable::colDef(minWidth = 300)
+    )
+  )
+```
+
+`source` is **who answered**: `Youth` is the child's own report, `Parent` the
+caregiver's, `General` an administrative field. Parent and youth reports of the
+*same* construct disagree — this dataset has both a parent and a youth screen-time
+measure, and comparing them is a Module 3 exercise waiting to happen.
+
+The fifteen instruments behind those variables:
+
+```{r}
+#| label: instruments
+#| echo: false
+dict |>
+  distinct(table_name, table_label, source, domain) |>
+  arrange(domain, table_name) |>
+  select(instrument = table_name, `what it is` = table_label, source, domain) |>
+  knitr::kable()
+```
+
+## Coded values, and their labels
+
+Here is the thing that surprises everyone the first time. Look at sex:
+
+```{r}
+#| label: coded-sex
+count(data, ab_g_stc__cohort_sex)
+```
+
+The values are `1` and `2`. Not `"Male"` and `"Female"` — the meaning is not in the
+data file. It is in `data_dictionary_levels.csv`, which is why that file matters:
+
+```{r}
+#| label: sex-levels
+levels_dict |>
+  filter(name == "ab_g_stc__cohort_sex")
+```
+
+This is not sloppiness. Real ABCD releases ship coded values and a separate
+dictionary on purpose: codes survive translation, they do not break when a label is
+reworded, and the same file can serve English and Spanish labels (hence the
+`label_es` column). The cost is that **you must apply the labels yourself**.
+
+### Labelling one variable
+
+Pull that variable's levels out of the dictionary, then hand them to `factor()`:
+
+```{r}
+#| label: label-sex
+sex_levels <- levels_dict |>
+  filter(name == "ab_g_stc__cohort_sex") |>
+  arrange(order_level)
+
+data <- data |>
+  mutate(
+    ab_g_stc__cohort_sex = factor(
+      ab_g_stc__cohort_sex,
+      levels = sex_levels$value,   # the codes stored in the data
+      labels = sex_levels$label    # what each code means
+    )
+  )
+
+count(data, ab_g_stc__cohort_sex)
+```
+
+Three things worth noticing:
+
+- **`levels` and `labels` must line up**, position by position. `arrange(order_level)`
+  is what guarantees that — the dictionary already knows the order these levels
+  should appear in, which matters for ordinal variables like income bands, where
+  alphabetical order would put `> 100k` before `< 50k`.
+- The variable is still a **factor** afterwards, not text. It plots and tabulates in
+  the dictionary's order rather than alphabetically.
+- Any code present in `levels` but absent from the data simply produces a zero
+  count. That is usually what you want — `Decline to answer` is a real category even
+  in a wave where nobody chose it.
+
+Repeat that block for each variable you actually use. Doing all thirteen coded
+variables in one stroke is a Module 2 topic — it needs tools this page has not
+introduced yet, and typing it out longhand a few times first is not wasted effort.
+
+### Every coded variable
+
+The thirteen variables that carry codes, and what each code means. Expand a
+variable to see its levels.
+
+```{r}
+#| label: levels-table
+#| echo: false
+levels_dict |>
+  arrange(name, order_level) |>
+  select(name, value, label) |>
+  grouped_reactable(
+    group_var = "name",
+    id = "levels-dict",
+    columns = list(
+      name  = reactable::colDef(maxWidth = 320),
+      value = reactable::colDef(maxWidth = 110),
+      label = reactable::colDef(minWidth = 300)
+    )
+  )
+```
+
+Two codes recur across variables and are **not** ordinary responses:
+
+| Code | Meaning |
+|:--|:--|
+| `777` | Decline to answer |
+| `999` | Don't know |
+
+They are stored as ordinary levels, so a mean or an ordinal model that treats them
+as the top of the scale will be badly wrong. Deciding what to do with them — drop
+them, or keep them as their own category — is an analysis choice you have to make
+explicitly. Module 3 makes it.
+
+## What is missing, and why
+
+About **27% of all cells are empty**, and that is realistic rather than broken. What
+matters is that the missingness is *structured*: it is never a uniform random
+sprinkle, so dropping incomplete rows is never free.
+
+```{r}
+#| label: missing-by-column
+colMeans(is.na(data)) |>
+  sort(decreasing = TRUE) |>
+  head(8) |>
+  round(2)
+```
+
+Four different mechanisms produce those gaps:
+
+- **Instrument schedules.** Several measures are only collected at baseline, the
+  2-year and the 4-year visit — so they are ~40% missing by design, not by accident.
+  A few NIH Toolbox subtests were retired after baseline; the Family Environment
+  cohesion scale was only added at the 4-year visit.
+- **Visit type.** Anthropometrics are ~80% missing at `Remote` visits and ~6%
+  missing elsewhere. Nobody can measure a waist circumference over video.
+- **Data quality.** MRI failure rises with age, because older children move more in
+  the scanner.
+- **Attrition.** 86 participants never reach the 4-year visit — and they are not a
+  random 86. They had higher baseline externalizing scores and were more often in
+  the lowest income band.
+
+That last one is the important one. It means a complete-case analysis quietly
+changes *who* you are studying, and that is a point Module 3 has to make with this
+dataset rather than in the abstract.
+
+## Is there anything in here to find?
+
+Yes. The dataset is not noise — real associations were built into it, sized so that
+a straightforward analysis at n = 500 will actually recover them. Finding them is
+the work of Modules 3 and 4.
+
+::: {.callout-warning collapse="true"}
+## Spoilers — the full list of planted effects
+
+Open this if you are teaching from the dataset, or working through it alone and
+want to check your answer. If you are attending Modules 3 and 4, you will get more
+out of them by leaving it shut.
+
+- **E1** Age → youth-reported screen time. About +1.0 h/day per year on weekdays,
+  +1.8 h/day per year at weekends.
+- **E2** Screen time → CBCL internalizing, holding age and sex constant. About
+  +0.27 points per weekday hour.
+- **E3** Household income → NIH Toolbox crystallized, picture vocabulary and oral
+  reading. About 0.6 SD between the lowest and the highest income group at baseline.
+- **E4** Sex. Males about +1.5 externalizing, females about +1.1 internalizing,
+  males about 7% larger total cortical volume.
+- **E5** Site. Random intercepts on cognition (SD 2.5 standard-score points) and on
+  screen time (SD 0.4 h) — the reason site belongs in a model rather than being
+  ignored.
+- **E6** Family conflict (FES) → CBCL externalizing, about +2.9 points across the
+  range of the conflict mean.
+- **E7** Parental monitoring → less substance-use curiosity; age → more curiosity.
+- **E8** Age → cortical thinning, about −0.030 mm/year, and a slow decline in total
+  cortical volume after age 12.
+- **E9** Household income → perceived neighbourhood safety. 53% of the highest
+  income group strongly agree their neighbourhood is safe, against 30% of the
+  lowest.
+- **E10** Missingness is structured, as described above — instrument schedules,
+  remote visits, age-related MRI failure, and MNAR attrition.
+
+Numbers are what a straightforward model recovers from the file as it stands, not
+the coefficients fed to the simulation.
+:::
+
+## Where this is used
+
+- [Module 2](module2.qmd) — exploring and visualising it
+- [Module 3](module3.qmd) — testing hypotheses on it
+- [Module 4](module4.qmd) — running an analysis end to end on it
+
+[Module 1](module1.qmd) does **not** use this file. It uses the much smaller
+`data/abcd-synthetic.csv`, which has plain English column names and three visits —
+deliberately, so that a first hour in R is spent learning R rather than decoding
+variable names.
+
+## Real ABCD data
+
+Everything on this page mirrors the real thing, but the real thing needs
+authorisation. Access runs through the
+[NIMH Data Archive](https://nda.nih.gov/abcd), and the official variable
+documentation lives at
+[data.abcdstudy.org](https://data.abcdstudy.org/reports/abcd-docs-next/documentation/non_imaging/index.html) —
+the `url_table` column of `data_dictionary.csv` points at the relevant page for
+every instrument here.
