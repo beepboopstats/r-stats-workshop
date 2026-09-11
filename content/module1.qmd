@@ -11,11 +11,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-::: {.callout-warning}
-# Page Under Development
-This page is under active development. The contents might change.
-:::
-
 This module is for someone who has **never used R**. By the end of two hours you
 will have read a real dataset into R, pulled it apart to answer questions about
 it, dealt with missing values, and made three plots.
@@ -729,6 +724,20 @@ Two hours ago that was an opaque wall of symbols.
 - `filter()`, `select()`, `arrange()`, `mutate()`, `group_by()` + `summarise()`
 - Spot missing data, count it, and decide about it deliberately
 - Build histograms, boxplots and line charts, and save them
+  
+## Recording
+
+The following recording is of the live workshop hosted on Sep 10th, 2026.
+
+::: {.callout-warning}
+
+The topics covered during the live session is a smaller subset of all
+the materials displayed above. We highly recommend you go through this entire
+page and the exercises to get comfortable with the contents / topics of
+Module 1.
+:::
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/1GxOy5eQcdA?si=-5uTT10JnEgKMgrF" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## Going further
 
@@ -740,6 +749,7 @@ Optional, and none of it is assumed in Module 2:
   book length
 - The [dplyr cheatsheet](https://rstudio.github.io/cheatsheets/data-transformation.pdf) —
   one page, keep it next to you
+  
 
 Next: [Module 2 · Data Exploration & Visualization →](module2.qmd) on Sep 24, where
 the pipelines get longer and the plots get good.
