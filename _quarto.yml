@@ -40,6 +40,8 @@ website:
         file: content/module0.qmd
       - text: "M1.Foundations"
         file: content/module1.qmd
+      - text: "M2.Exploration"
+        file: content/module2.qmd
       - text: "Deep Dive"
         menu:
           - text: "The ABCD-shaped dataset"
@@ -48,10 +50,14 @@ website:
             file: content/module1-data-types.qmd
           - text: "Plot gallery"
             file: content/module1-plot-gallery.qmd
+          - text: "Wrangling: joins, across() & pivots"
+            file: content/module2-wrangling.qmd
+          - text: "Anatomy of a ggplot2 figure"
+            file: content/module2-ggplot-anatomy.qmd
+          - text: "Writing functions"
+            file: content/module2-functions.qmd
       - text: "Upcoming"
         menu:
-          - text: "M2.Data Exploration & Visualization"
-            file: content/module2.qmd
           - text: "M3.Inferential Statistics"
             file: content/module3.qmd
           - text: "M4.Applied Projects"

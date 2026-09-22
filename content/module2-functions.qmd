@@ -1,0 +1,556 @@
+---
+title: "Deep-dive · Writing Your Own Functions"
+subtitle: "Optional companion to Module 2"
+pagetitle: "Writing R Functions for dplyr & ggplot2 | ABCD R Workshop"
+description-meta: "Turn copy-pasted dplyr pipelines and ggplot2 code into reusable R functions: arguments, return values, {{ }} embracing, plot functions and layer bundles."
+open-graph:
+  description: "Refactor Module 2's dplyr and ggplot2 code into reusable R functions, step by step."
+twitter-card:
+  description: "Refactor Module 2's dplyr and ggplot2 code into reusable R functions, step by step."
+editor_options:
+  chunk_output_type: console
+---
+
+[Module 2](module2.qmd) built every figure by copying the one before and changing
+a few lines. That is the right way to *discover* an analysis. It is the wrong way
+to *keep* one. This page takes the Module 2 code and turns it, one step at a
+time, into a handful of small functions — until the whole session fits in about
+six lines.
+
+```{r}
+#| label: setup
+library(dplyr)
+library(ggplot2)
+
+data <- readRDS("data/data.RDS")
+levels_dict <- readr::read_csv("data/data_dictionary_levels.csv")
+```
+
+## Why bother
+
+Look back at Module 2's Exercise 1. Its solution is the Q1 facet pipeline with
+three lines changed. Exercise 2 is the Q2 pipeline with one measure swapped. Two
+copies, each drifting slightly away from the original — and one real bug that
+drifted in: Q1 sets the order of `sex` and Q2 does not, so **the colours swap
+between the two figures**.
+
+Copies go wrong in exactly this way. Fix a problem in one and you have to
+remember every other place it was pasted. A **function** is a named piece of
+code you write once and call many times. Fix it once, and every call is fixed.
+
+A common rule of thumb: once you have copied a block of code twice, make it a
+function.
+
+## The anatomy of a function
+
+```{r}
+#| label: first-function
+se <- function(x) {
+  sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
+}
+```
+
+Four parts:
+
+- **`se`** — the name, assigned with `<-` like any other object
+- **`function(x)`** — the **arguments**: the inputs, and the names they go by
+  *inside* the function
+- **`{ ... }`** — the **body**: the code that runs
+- the **return value** — whatever the last line of the body produces. No
+  `return()` needed
+
+That function is the standard error from Module 2 — SD divided by the square root
+of n — written so it copes with missing values: `sum(!is.na(x))` counts only the
+values that are present. Call it like any built-in function:
+
+```{r}
+#| label: use-se
+se(c(4, 8, 6, NA, 5))
+
+sub_screen <- data |>
+  group_by(session_id) |>
+  summarise(
+    mean = mean(nt_y_stq__screen__wkdy_sum, na.rm = TRUE),
+    se   = se(nt_y_stq__screen__wkdy_sum)
+  )
+sub_screen
+```
+
+### Default arguments
+
+An argument can have a default value, used when the caller does not supply one:
+
+```{r}
+#| label: defaults
+pct_missing <- function(x, digits = 1) {
+  round(100 * mean(is.na(x)), digits)
+}
+
+pct_missing(data$ph_y_anthr__waist_001)
+pct_missing(data$ph_y_anthr__waist_001, digits = 3)
+```
+
+You have been using defaults since Module 1: `mean()` has `na.rm = FALSE`
+unless you say otherwise.
+
+::: {.callout-tip}
+## You have met one already
+The [wrangling deep-dive](module2-wrangling.qmd#labelling-every-coded-variable-at-once)
+wrote `apply_labels(x, var)`, which labels any coded variable from the
+dictionary. Same anatomy: two arguments, a body, and the last line's value
+returned.
+:::
+
+## Functions around dplyr: `{{ }}`
+
+`se()` works on a vector. The Module 2 code, though, is pipelines, and the
+natural next step — passing a column *name* into a function — fails in a way
+that confuses everyone the first time:
+
+```{r}
+#| label: naive-dplyr
+#| error: true
+mean_of <- function(data, var) {
+  data |> summarise(mean = mean(var, na.rm = TRUE))
+}
+
+mean_of(data, ph_y_anthr__height_mean)
+```
+
+Inside a dplyr verb, a bare name like `height` means "the column called
+`height`". But inside a function, `var` is just an argument. dplyr looks for a
+column literally called `var`, does not find one, and then looks for an ordinary
+variable instead — and fails.
+
+The fix is to **embrace** the argument with double braces, `{{ var }}`. It tells
+dplyr: "don't use the word `var`; use whatever the caller typed in its place."
+
+```{r}
+#| label: embrace
+mean_of <- function(data, var) {
+  data |> summarise(mean = mean({{ var }}, na.rm = TRUE))
+}
+
+mean_of(data, ph_y_anthr__height_mean)
+```
+
+That is the one rule to remember: **when an argument is a column name that is
+passed into a dplyr or ggplot2 function, wrap it in `{{ }}`.**
+
+### A summary function
+
+Now the Q2 summary — n, mean, SD and SE per group — as a function. The `...`
+("dots") argument collects *any number* of extra arguments and passes them on,
+here to `group_by()`, so the caller can group by as many columns as they like:
+
+```{r}
+#| label: summarise-mean-se
+summarise_mean_se <- function(data, var, ...) {
+  data |>
+    filter(!is.na({{ var }})) |>
+    group_by(...) |>
+    summarise(
+      n    = n(),
+      mean = mean({{ var }}),
+      sd   = sd({{ var }}),
+      se   = sd / sqrt(n),
+      .groups = "drop"
+    )
+}
+
+data |>
+  summarise_mean_se(nt_y_stq__screen__wkdy_sum, session_id)
+```
+
+One line per summary table, for any variable and any grouping.
+
+## Wrap the data preparation
+
+Module 2's section 3 turned `data` into `sub2`: select and rename, round, recode
+sex, build `visit`, join the site labels. Here it is in full as the "before" —
+the same code, minus the `glimpse()` calls used to peek during the live
+session:
+
+```{r}
+#| label: before
+site_levels <- levels_dict |>
+  filter(
+    name == "ab_g_dyn__design_site"
+  ) |>
+  select(
+    value,
+    site_label = label
+  )
+
+sub2 <- data |>
+  select(
+    1:2,
+    age = ab_g_dyn__visit_age,
+    site = ab_g_dyn__design_site,
+    income = ab_g_dyn__cohort_income__hhold__3lvl,
+    sex = ab_g_stc__cohort_sex,
+    ethn = ab_g_stc__cohort_ethn,
+    matches("_anthr_"),
+    matches("_screen_"),
+    matches("_cbcl_")
+  ) |>
+  rename(
+    height = ph_y_anthr__height_mean,
+    weight = ph_y_anthr__weight_mean,
+    waist = ph_y_anthr__waist_001
+  ) |>
+  as_tibble() |>
+  mutate(
+    across(
+      where(is.numeric),
+      ~ round(.x)
+    )
+  ) |>
+  mutate(
+    sex = case_when(
+      sex == 1 ~ "Male",
+      sex == 2 ~ "Female",
+      .default = NA
+    ),
+    visit = stringr::str_replace(session_id, "ses-", "") |>
+      readr::parse_number() |>
+      factor(),
+    site = as.character(site)
+  ) |>
+  left_join(
+    site_levels |>
+      mutate(
+        value = as.character(value)
+      ),
+    join_by(site == value)
+  )
+```
+
+Wrapped in a function, the two pieces — building the site lookup and formatting
+the data — travel together, and the inputs become explicit arguments:
+
+```{r}
+#| label: format-abcd
+format_abcd <- function(data, levels_dict) {
+  site_levels <- levels_dict |>
+    filter(name == "ab_g_dyn__design_site") |>
+    select(value, site_label = label) |>
+    mutate(value = as.character(value))
+
+  data |>
+    select(
+      1:2,
+      age    = ab_g_dyn__visit_age,
+      site   = ab_g_dyn__design_site,
+      income = ab_g_dyn__cohort_income__hhold__3lvl,
+      sex    = ab_g_stc__cohort_sex,
+      ethn   = ab_g_stc__cohort_ethn,
+      matches("_anthr_"),
+      matches("_screen_"),
+      matches("_cbcl_")
+    ) |>
+    rename(
+      height = ph_y_anthr__height_mean,
+      weight = ph_y_anthr__weight_mean,
+      waist  = ph_y_anthr__waist_001
+    ) |>
+    as_tibble() |>
+    mutate(across(where(is.numeric), ~ round(.x))) |>
+    mutate(
+      sex = case_when(
+        sex == 1 ~ "Male",
+        sex == 2 ~ "Female",
+        .default = NA
+      ),
+      visit = stringr::str_replace(session_id, "ses-", "") |>
+        readr::parse_number() |>
+        factor(),
+      site = as.character(site)
+    ) |>
+    left_join(site_levels, join_by(site == value))
+}
+```
+
+`site_levels` is now created *inside* the function. It exists only while the
+function runs and cannot clash with anything else in your session — one of the
+quiet benefits of functions.
+
+Whenever you refactor, check that nothing changed:
+
+```{r}
+#| label: check-identical
+identical(format_abcd(data, levels_dict), sub2)
+```
+
+`identical()` compares two objects exactly. `TRUE` means the function gives the
+same `sub2`, value for value, as the original pipeline.
+
+## Functions that return plots
+
+A ggplot is an object like any other, so a function can build one and return it.
+The same `{{ }}` rule applies inside `aes()` and inside tidyselect arguments such
+as `select()` and `pivot_longer(cols = )`.
+
+### Reusable layer bundles
+
+First, the pieces every Module 2 figure repeated — the theme, the legend
+position, the colours. A function can return a **`list()` of layers**, and
+ggplot2 adds every item in the list when you `+` it:
+
+```{r}
+#| label: layer-bundles
+sex_colours <- c(Male = "orange", Female = "grey60")
+
+scale_sex <- function() {
+  list(
+    scale_fill_manual(values = sex_colours),
+    scale_colour_manual(values = sex_colours)
+  )
+}
+
+theme_workshop <- function(base_size = 20) {
+  list(
+    theme_bw(base_size),
+    theme(legend.position = "top")
+  )
+}
+```
+
+Note the **named** colour values. `c(Male = "orange", ...)` ties each colour to a
+*category* rather than to a position, so males are orange whatever order the
+levels are in. That fixes Module 2's colour-swap bug once, for every figure
+that uses `scale_sex()`.
+
+### The facet boxplot
+
+```{r}
+#| label: plot-boxplots
+plot_boxplots <- function(data, cols) {
+  data |>
+    mutate(sex = factor(sex, levels = c("Male", "Female"))) |>
+    select(participant_id, visit, sex, {{ cols }}) |>
+    tidyr::pivot_longer(
+      cols = {{ cols }},
+      names_to = "what",
+      values_to = "value"
+    ) |>
+    mutate(visit = paste0("yr-", visit) |> factor()) |>
+    ggplot(aes(x = visit, y = value, fill = sex)) +
+    geom_boxplot(col = "black") +
+    facet_grid(~ what, scales = "free") +
+    coord_flip() +
+    scale_sex() +
+    theme_workshop()
+}
+```
+
+Module 2's Q1 figure is now one call:
+
+```{r}
+#| label: fig-fn-anthro
+#| fig-cap: "Q1 from Module 2, as one function call"
+#| fig-alt: "Three panels of horizontal boxplots — height, waist and weight — by visit, orange for males and grey for females."
+#| fig-width: 12
+#| fig-height: 6
+#| warning: false
+plot_boxplots(sub2, height:waist)
+```
+
+And Exercise 1 is the same call with different columns. `cols` accepts anything
+`select()` does — ranges, names, `matches()`:
+
+```{r}
+#| label: fig-fn-screen
+#| fig-cap: "Module 2's Exercise 1, as one function call"
+#| fig-alt: "Four panels of horizontal boxplots of the four screen-time measures by visit, orange for males and grey for females."
+#| fig-width: 12
+#| fig-height: 6
+#| warning: false
+plot_boxplots(sub2, matches("_screen_"))
+```
+
+### The mean ± SE plot
+
+```{r}
+#| label: plot-mean-se
+plot_mean_se <- function(summary, x, group, dodge = 0.7) {
+  pd <- position_dodge(width = dodge)
+
+  summary |>
+    ggplot(aes(x = {{ x }}, y = mean, colour = {{ group }}, fill = {{ group }}, group = {{ group }})) +
+    geom_errorbar(aes(ymin = mean - se, ymax = mean + se), position = pd, width = .3) +
+    geom_line(position = pd) +
+    geom_point(position = pd, size = 7) +
+    scale_sex() +
+    theme_workshop()
+}
+```
+
+It expects a table with `mean` and `se` columns — exactly what
+`summarise_mean_se()` returns — so the two chain together:
+
+```{r}
+#| label: fig-fn-mean-se
+#| fig-cap: "Q2 from Module 2, as a short pipeline of function calls"
+#| fig-alt: "Mean weekday screen time by age from 10 to 15, one line per sex with error bars, males in orange and females in grey."
+#| fig-width: 10
+#| fig-height: 6
+sub2 |>
+  filter(age >= 10 & age <= 15) |>
+  mutate(age = factor(age)) |>
+  summarise_mean_se(nt_y_stq__screen__wkdy_sum, age, sex) |>
+  plot_mean_se(age, sex)
+```
+
+Males are orange again, as in Q1 — the named colours at work. The legend still
+lists `Female` first, because legend *order* comes from the factor levels, not
+from the colour names. Add `mutate(sex = factor(sex, levels = c("Male", "Female")))`
+if the order matters.
+
+One small difference from the original: Q2 dropped a row if *any* of four
+measures was missing, while `summarise_mean_se()` only needs the one being
+summarised. So each group here keeps a few more participants (146 rather than
+140 girls at age 10, for instance), and the means shift very slightly. Neither
+rule is wrong, but a refactor is a good moment to choose one deliberately.
+
+Because the function returns an ordinary ggplot, you can keep adding layers to
+the result:
+
+```{r}
+#| label: fig-fn-extend
+#| fig-alt: "Mean CBCL externalizing score by age and sex with error bars, with axis titles and a plot title added."
+#| fig-width: 10
+#| fig-height: 6
+sub2 |>
+  filter(age >= 10 & age <= 15) |>
+  mutate(age = factor(age)) |>
+  summarise_mean_se(mh_p_cbcl__synd__ext_sum, age, sex) |>
+  plot_mean_se(age, sex) +
+  labs(
+    x = "Age (years)",
+    y = "CBCL externalizing (mean ± SE)",
+    title = "Externalizing problems by age and sex"
+  )
+```
+
+## Putting it together
+
+Everything from Module 2, with the functions defined above:
+
+```r
+sub2 <- format_abcd(data, levels_dict)
+
+plot_boxplots(sub2, height:waist)
+plot_boxplots(sub2, matches("_screen_"))
+
+sub2 |>
+  filter(age >= 10 & age <= 15) |>
+  mutate(age = factor(age)) |>
+  summarise_mean_se(nt_y_stq__screen__wkdy_sum, age, sex) |>
+  plot_mean_se(age, sex)
+```
+
+Each line says *what* it does, not *how*. The how lives in one place.
+
+### The same plot for many variables
+
+With column names held as **text**, one more piece of syntax is needed:
+`.data[[name]]` means "the column whose name is stored in `name`". It works
+anywhere a bare column name would, including through `{{ }}`:
+
+```{r}
+#| label: many-plots
+outcomes <- c(
+  "nt_y_stq__screen__wkdy_sum",
+  "mh_p_cbcl__synd__int_sum",
+  "mh_p_cbcl__synd__ext_sum"
+)
+
+plots <- lapply(outcomes, \(v) {
+  sub2 |>
+    filter(age >= 10 & age <= 15) |>
+    mutate(age = factor(age)) |>
+    summarise_mean_se(.data[[v]], age, sex) |>
+    plot_mean_se(age, sex) +
+    labs(title = v)
+})
+
+length(plots)
+```
+
+`lapply()` runs the function once for each element of `outcomes` and returns a
+list of the results — here, three finished plots. (`\(v)` is shorthand for
+`function(v)`.) Look at any one with `plots[[2]]`, or save them all:
+
+```r
+for (i in seq_along(plots)) {
+  ggsave(
+    paste0("output/", outcomes[i], ".png"),
+    plot = plots[[i]],
+    width = 10, height = 6, dpi = 300
+  )
+}
+```
+
+Adding a fourth outcome is now a one-word change.
+
+## Keeping functions in a file
+
+Functions defined in the middle of an analysis script get lost. Put them in their
+own file in your project — for example `R/functions.R` — and load them at the top
+of every script that needs them:
+
+```r
+library(dplyr)
+library(ggplot2)
+
+source("R/functions.R")   # defines format_abcd(), plot_boxplots(), ...
+```
+
+`source()` runs every line of a file, so the functions are defined and ready to
+use. The same relative-path rule from Module 1 applies: it works because your
+RStudio Project sets the working directory.
+
+### Failing helpfully
+
+A function used by other people — or by you in three months — should say clearly
+when it is being misused. Without a check, passing the raw data to
+`plot_boxplots()` fails deep inside `mutate()` with an error about a column called
+`sex`. A check at the top turns that into a message the caller can act on:
+
+```{r}
+#| label: fail-helpfully
+#| error: true
+plot_boxplots <- function(data, cols) {
+  if (!"sex" %in% names(data)) {
+    stop("`data` needs a `sex` column. Run format_abcd() on it first.")
+  }
+
+  data |>
+    mutate(sex = factor(sex, levels = c("Male", "Female"))) |>
+    select(participant_id, visit, sex, {{ cols }}) |>
+    tidyr::pivot_longer(cols = {{ cols }}, names_to = "what", values_to = "value") |>
+    mutate(visit = paste0("yr-", visit) |> factor()) |>
+    ggplot(aes(x = visit, y = value, fill = sex)) +
+    geom_boxplot(col = "black") +
+    facet_grid(~ what, scales = "free") +
+    coord_flip() +
+    scale_sex() +
+    theme_workshop()
+}
+
+plot_boxplots(data, height:waist)
+```
+
+`stop()` halts the function with your message. The error names the function,
+says what is wrong, and says what to do about it — the three things a good error
+message needs.
+
+## Going further
+
+- [R for Data Science, chapter 25: Functions](https://r4ds.hadley.nz/functions.html)
+  — vector, data frame and plot functions, at book length
+- [Programming with dplyr](https://dplyr.tidyverse.org/articles/programming.html)
+  — everything about `{{ }}`, `.data` and `...`
+
+Back to [Module 2](module2.qmd).

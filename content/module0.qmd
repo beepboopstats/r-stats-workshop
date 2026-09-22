@@ -192,7 +192,7 @@ It helps you avoid rewriting the same code multiple times.
 - Core Purpose: Automates repetitive tasks and organizes code.
 - Inputs & Outputs: Takes inputs called arguments, processes them, and returns a result.
 - Built-in Functions: R comes with thousands of ready-to-use functions like mean(), sum(), and plot().
-- Custom Functions: You can write your own functions using the function() keyword. We will do this in Module 2.
+- Custom Functions: You can write your own functions using the function() keyword. We do this in the [Module 2 functions deep-dive](module2-functions.qmd).
 :::
 
 

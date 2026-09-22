@@ -7,43 +7,1288 @@ open-graph:
   description: "Tidy data pipelines and publication-ready ggplot2 figures. Module 2 of the ABCD R and statistics workshop series."
 twitter-card:
   description: "Tidy data pipelines and publication-ready ggplot2 figures. Module 2 of the ABCD R and statistics workshop series."
+editor_options:
+  chunk_output_type: console
 ---
-
-::: {.callout-note}
-## Materials coming soon
-This page will fill in before the session. In the meantime,
-[Module 1](module1.qmd) is the preparation.
-:::
 
 **Designed for** someone with a basic knowledge of R and RStudio — which
 [Module 1](module1.qmd) provides.
 
-Building on Module 1, we go deeper into:
+Module 1 used a small, tidy teaching file with plain English column names. Today
+we move to data shaped like a real ABCD release: cryptic variable names, values
+stored as numeric codes, and a lot of missing cells. The work of the session is
+getting from that raw file to two figures you could put on a poster:
 
-- using tidy, modern practices to build **data pipelines** in R
-- writing efficient code to **transform and summarise** datasets
-- using **ggplot2** to create publication-ready figures
+- boxplots of height, weight and waist circumference at every visit, split by sex
+- the mean weekday screen time at each age, with standard-error bars
 
-## The data
+Along the way we build longer **data pipelines** — select, rename, recode, join,
+reshape — and learn how **ggplot2** figures are put together layer by layer.
 
-From this module onward we move to a larger, more realistic dataset:
-`data/data.RDS` — 500 participants across five annual visits, with real ABCD
-variable names, coded factor levels and structured missing data.
+::: {.callout-note}
+## Before you start
+Download the three files from the [dataset page](data.qmd#get-the-files) —
+`data.RDS`, `data_dictionary.csv` and `data_dictionary_levels.csv` — into your
+project's `data/` folder, next to `abcd-synthetic.csv` from Module 1.
 
-The [dataset reference page](data.qmd) explains what is in it, how to read the
-variable names, and where the value labels live. Get the three files from there
-before the session.
+Following along live? The code from the session is in
+[`module2-live.R`](../scripts/module2-live.R). Every chunk on this page is taken
+from it, in the same order.
+:::
 
-## Preparation
+## Recap
 
-- Work through [Module 1](module1.qmd), or be comfortable with `filter()`,
-  `mutate()`, `group_by()` + `summarise()` and the `|>` pipe
-- Have R, RStudio and the packages from [Module 0](module0.qmd) working
-- Download [the dataset and its dictionaries](data.qmd#get-the-files) into your
-  project's `data/` folder
+Everything today is built from pieces you met in [Module 1](module1.qmd):
 
-## Resources
+- `|>` — "and then": hands the result on the left to the function on the right
+- `select()` keeps columns, `filter()` keeps rows, `mutate()` adds or changes columns
+- `group_by()` + a summary function computes one row per group
+- `count()` tabulates
+- `ggplot(aes(...)) + geom_*()` — a plot is a mapping plus layers, joined by `+`
 
+If any of those is unfamiliar, Module 1 sections 6, 7 and 9 are the place to
+catch up.
+
+## 0. Load libraries
+
+```{r}
+#| label: libraries
+library(dplyr)
+library(ggplot2)
+```
+
+Only two `library()` calls, yet the code below also uses functions from
+**readr**, **stringr** and **tidyr**. It reaches them with `package::function()`
+notation instead — `readr::read_csv()` means "the `read_csv()` function from the
+readr package".
+
+That notation does two things. It uses a function without switching the whole
+package on, and it makes it obvious to the reader where a function comes from.
+It is a good habit for packages you only need once or twice in a script. The
+packages still have to be *installed* (Module 0 did that); `::` just skips the
+*loading*.
+
+## 1. Reading files into R
+
+### CSV
+
+```{r}
+#| label: read-csv
+# - CSV
+
+readr::read_csv("data/abcd-synthetic.csv") |>
+  glimpse()
+```
+
+This is the Module 1 file, read and glimpsed but not stored — there is no `<-`,
+so the result is printed and then thrown away. It is here as a reminder of what
+a CSV gives you: plain columns of numbers and text.
+
+### RDS
+
+```{r}
+#| label: read-rds
+# - RDS (R Data Set)
+
+data <- readRDS("data/data.RDS") |>
+  glimpse()
+```
+
+`.RDS` is R's own file format. It stores an R object exactly as it was, so
+factors stay factors (`<fct>`) and the visit timestamp stays a date-time
+(`<dttm>`). A CSV would flatten both into text or numbers, and you would rebuild
+them by hand every time.
+
+Why does `data` end up holding the data, when the last step of the pipe is
+`glimpse()`? Because `glimpse()` prints a preview and then **passes its input
+through unchanged**. That makes it safe to drop into the middle of any pipeline
+to peek at what is flowing through — a trick used throughout this session.
+
+2,295 rows and 53 columns: 500 participants, each with up to five annual visits.
+What the column names mean, and how to read them, is on the
+[dataset page](data.qmd#how-abcd-names-its-variables) — keep it open in another
+tab.
+
+## 2. Select columns of interest
+
+Fifty-three columns is too many to think about. The first step is to cut down to
+the ones the analysis needs, and give the important ones names a human can type.
+
+```{r}
+#| label: select
+sub <- data |>
+  select(
+    # by position
+    1:2,
+    # by name, simultaneously rename
+    age = ab_g_dyn__visit_age,
+    site = ab_g_dyn__design_site,
+    income = ab_g_dyn__cohort_income__hhold__3lvl,
+    sex = ab_g_stc__cohort_sex,
+    ethn = ab_g_stc__cohort_ethn,
+    # by pattern
+    matches("_anthr_"),
+    matches("_screen_"),
+    matches("_cbcl_")
+  ) |>
+  rename(
+    height = ph_y_anthr__height_mean,
+    weight = ph_y_anthr__weight_mean,
+    waist = ph_y_anthr__waist_001
+  ) |>
+  as_tibble() |>
+  glimpse()
+```
+
+`select()` can pick columns in three different ways, and this one call uses all
+three:
+
+- **By position.** `1:2` means "columns 1 through 2" — here `participant_id` and
+  `session_id`. Quick, but fragile: if the column order ever changes, so does
+  what you get.
+- **By name, with a rename.** `age = ab_g_dyn__visit_age` keeps the column *and*
+  renames it, `new_name = old_name`. The same pattern works in `rename()`.
+- **By pattern.** `matches("_anthr_")` keeps every column whose name contains
+  `_anthr_` — all three anthropometric measures at once. This is where ABCD's
+  structured names pay off: one short pattern selects a whole instrument.
+
+`rename()` then does the same `new = old` renaming without dropping anything.
+The three anthropometric columns came in via `matches()`, so they are renamed
+here rather than inside `select()`.
+
+`as_tibble()` makes sure the result is a **tibble**, the tidyverse flavour of a
+data frame, which prints more compactly and more safely than a plain
+`data.frame`.
+
+::: {.callout-tip}
+## Going deeper
+`starts_with()`, `ends_with()`, `contains()` and `where()` — the other ways to
+pick columns — are on the [wrangling deep-dive](module2-wrangling.qmd#choosing-columns).
+:::
+
+## 3. Format data
+
+A dataset fresh from a release is rarely ready to analyse. Four checks, every time:
+
+1. **Check data types.** Is every column the type you expect — numbers as
+   numbers, categories as factors?
+2. **Rename factor levels.** Coded values (`1`, `2`) need their labels
+   (`Male`, `Female`) before they are useful in a table or a plot legend.
+3. **Look for implausible values.** Data-entry errors and impossible values
+   hide in every real dataset.
+4. **Handle missingness.** Know where the `NA`s are before you decide what to do
+   about them.
+
+### The levels dictionary
+
+The labels for coded variables do not live in the data file. They live in
+`data_dictionary_levels.csv` — one row per code, per variable:
+
+```{r}
+#| label: levels-dict
+levels_dict <- readr::read_csv("data/data_dictionary_levels.csv") |>
+  glimpse()
+```
+
+`site` is stored as a number from 1 to 22. To turn those into site names, pull
+out just the site rows:
+
+```{r}
+#| label: site-levels
+site_levels <- levels_dict |>
+  filter(
+    name == "ab_g_dyn__design_site"
+  ) |>
+  select(
+    value,
+    site_label = label
+  )
+```
+
+`site_levels` is now a small two-column lookup table: `value` (the code) and
+`site_label` (what it means). The `select()` renames `label` on the way out, so
+it cannot clash with anything later.
+
+### Recoding and joining
+
+```{r}
+#| label: format-data
+sub2 <- sub |>
+  glimpse() |>
+  mutate(
+    across(
+      where(is.numeric),
+      ~ round(.x)
+    )
+  ) |>
+  mutate(
+    sex = case_when(
+      sex == 1 ~ "Male",
+      sex == 2 ~ "Female",
+      .default = NA
+    ),
+    visit = stringr::str_replace(session_id, "ses-", "") |>
+      readr::parse_number() |>
+      factor(),
+    site = as.character(site)
+  ) |>
+  left_join(
+    site_levels |>
+      mutate(
+        value = as.character(value)
+      ),
+    join_by(site == value)
+  ) |>
+  glimpse()
+```
+
+A lot happens in one pipeline, so take it a step at a time.
+
+**`across(where(is.numeric), ~ round(.x))`** — "for every column that is
+numeric, replace it with a rounded version of itself". `across()` applies one
+function to many columns; `where(is.numeric)` picks which ones; `~ round(.x)` is
+the function, with `.x` standing for "the current column". The point is to turn
+age (`10.2`, `10.7`, …) into whole years, which the plot in Q2 needs.
+
+Be aware that it rounds *every* numeric column — height, weight, screen time and
+the CBCL scores too. That is fine for the plots today, but in a real analysis you
+would usually round only the column you meant to, e.g. `mutate(age = round(age))`.
+
+**`case_when()`** — recodes by condition. Each line is `condition ~ value`, tried
+in order; `.default = NA` catches anything that matched no line. `sex` is a
+factor whose levels are `"1"` and `"2"`, and `sex == 1` compares against those
+levels. The result is plain text, `"Male"` or `"Female"`.
+
+**Building `visit`** — `session_id` looks like `ses-02A`. `str_replace()`
+removes the `ses-` prefix, leaving `02A`; `parse_number()` pulls out the number,
+`2`; `factor()` makes it a category. So `visit` runs `0` to `4` — baseline to
+year-4.
+
+**`site = as.character(site)`** — converting to text ahead of the join. See the
+next paragraph.
+
+**`left_join()`** — this is new, and it is the most important step here. A
+**join** matches rows in two tables by a shared key and glues on the columns from
+the second table. `join_by(site == value)` says "match `site` in our data against
+`value` in the lookup". **Left** join means every row of our data is kept,
+whether or not it finds a match.
+
+Joins only match when the keys are the *same type*. `site` in the data is a
+factor; `value` in the lookup is a number. Converting both to character first —
+`as.character(site)` above, `as.character(value)` inside the join — puts them on
+common ground.
+
+::: {.callout-tip}
+## Going deeper
+Other join types, what happens when the key types do not match, and how to label
+*all thirteen* coded variables in one go, are on the
+[wrangling deep-dive](module2-wrangling.qmd#joins).
+:::
+
+After any join, check it did what you expected:
+
+```{r}
+#| label: check-join
+sub2 |>
+  count(site, site_label)
+```
+
+Every code has a name next to it, and no `site_label` is `NA`. If a join
+silently fails to match, this is where you see it.
+
+### Implausible values
+
+The third check on the list — looking for values that cannot be right.
+`summary()` on the columns you plan to use is the fastest way:
+
+```{r}
+#| label: implausible
+sub2 |>
+  select(height, weight, waist, matches("_screen_")) |>
+  summary()
+```
+
+Read the `Min.` and `Max.` rows. A weekend screen-time total of 150 hours is
+impossible, however much a 13-year-old might want it to be, and a waist
+circumference of 12 inches is not a plausible child. The medians look sensible.
+It is a handful of extreme values that do not.
+
+::: {.callout-warning}
+## Finding is not fixing
+Spotting implausible values is a descriptive job, and it belongs here. Deciding
+what to *do* about them — drop them, cap them, or treat them as missing — is an
+analysis decision with consequences, and it gets proper treatment in
+[Module 3](module3.qmd). For now, keep an eye out for them in the plots below:
+boxplots are very good at showing them.
+:::
+
+## Q1. Height, Weight, and Waist
+
+The first question: how do body measurements change across visits, and do they
+differ by sex? Start with one measure, waist circumference:
+
+```{r}
+#| label: fig-waist
+#| fig-cap: "Waist circumference by visit and sex"
+#| fig-alt: "Horizontal boxplots of waist circumference for visits 0 to 4, with orange boxes for males and grey boxes for females; waist increases slightly across visits."
+#| warning: false
+sub2 |>
+  glimpse() |>
+  # tidyr::drop_na(height) |>
+  mutate(
+    sex = factor(
+      sex,
+      levels = c("Male", "Female")
+    ),
+    visit = stringr::str_replace(session_id, "ses-", "") |>
+      readr::parse_number() |>
+      factor()
+  ) |>
+  glimpse() |>
+  ggplot(
+    aes(
+      x = visit,
+      # x = session_id,
+      y = waist,
+      fill = sex,
+      col = sex
+    )
+  ) +
+  theme_bw(20) +
+  # geom_hline(yintercept = 60, colour = "grey60") +
+  # geom_vline(xintercept = 12.5, colour = "red") +
+  # geom_point()
+  # geom_violin(col = "black") +
+  geom_boxplot(col = "black") +
+  # geom_jitter(alpha = 0.5, size = 0.2) +
+  # scale_fill_viridis_d() +
+  scale_fill_manual(values = c("orange", "grey60")) +
+  scale_color_viridis_d() +
+  coord_flip() +
+  theme(
+    legend.position = "top"
+  )
+```
+
+Before the plot, the `mutate()` does two things:
+
+- **`sex = factor(sex, levels = c("Male", "Female"))`** fixes the order of the
+  categories. Left alone, R sorts text alphabetically, so `Female` would come
+  first. The order of the levels is the order of the legend and of the colours.
+- **`visit = ...`** rebuilds `visit` from `session_id`. `sub2` already has an
+  identical `visit` column from section 3, so this line is redundant — harmless,
+  but you could delete it and get the same plot.
+
+Then the plot, one piece at a time:
+
+- **`aes(x = visit, y = waist, fill = sex, col = sex)`** — visit on one axis,
+  waist on the other, and sex mapped to two things: **`fill`**, the inside colour
+  of a shape, and **`col`** (colour), its outline.
+- **`theme_bw(20)`** — a clean black-and-white theme, with a base font size of
+  20 so the text is readable when shared on screen or put on a poster.
+- **`geom_boxplot(col = "black")`** — draw the boxes. `col = "black"` *outside*
+  `aes()` sets the outline to one fixed colour, overriding the mapping. Inside
+  `aes()` maps a column; outside sets a constant.
+- **`scale_fill_manual(values = c("orange", "grey60"))`** — choose the fill colours
+  yourself, in the order of the factor levels: Male orange, Female grey.
+- **`scale_color_viridis_d()`** — a colour-blind-friendly palette for the outline
+  mapping. It has no visible effect here, because `col = "black"` in the geom
+  wins; it shows up when you switch geoms (try `geom_point()`).
+- **`coord_flip()`** — swap the axes so the boxes run horizontally. Long labels
+  and many categories read more easily this way.
+- **`theme(legend.position = "top")`** — move the legend from the right to the
+  top, giving the plot more width.
+
+::: {.callout-note}
+## Try it: uncomment a line
+The commented-out lines are alternatives from the live session. Remove the `#`
+from one at a time and re-run:
+
+- `geom_violin(col = "black")` — the full shape of the distribution, not just
+  its quartiles
+- `geom_jitter(alpha = 0.5, size = 0.2)` — every individual measurement as a
+  faint point, on top of the boxes
+- `scale_fill_viridis_d()` — replace the manual colours with the viridis palette
+  (comment out `scale_fill_manual()` first, or R warns that it is replacing it)
+- `geom_hline(...)`, `geom_vline(...)` — reference lines. Note what `coord_flip()`
+  does to them: a "horizontal" line ends up vertical.
+- `x = session_id` in place of `x = visit` — the raw visit codes instead of 0–4
+- `tidyr::drop_na(height)` — drop the rows missing height before plotting
+:::
+
+### All three at once: reshape, then facet
+
+Doing that three times, once per measure, is repetitive. Better to put all three
+side by side in one figure. That takes one new idea: **reshaping**.
+
+```{r}
+#| label: fig-anthro-facet
+#| fig-cap: "Height, waist and weight by visit and sex"
+#| fig-alt: "Three panels of horizontal boxplots — height, waist and weight — for visits yr-0 to yr-4, orange for males and grey for females; each measure increases across visits, with males taller and heavier by year 4."
+#| fig-width: 12
+#| fig-height: 6
+#| warning: false
+sub2 |>
+  mutate(
+    sex = factor(
+      sex,
+      levels = c("Male", "Female")
+    )
+  ) |>
+  select(
+    participant_id,
+    visit,
+    sex,
+    height,
+    weight,
+    waist
+  ) |>
+  tidyr::pivot_longer(
+    cols = height:waist,
+    names_to = "what",
+    values_to = "value"
+  ) |>
+  mutate(
+    visit = paste0("yr-", visit) |> factor()
+  ) |>
+  ggplot(
+    aes(
+      x = visit,
+      y = value,
+      fill = sex,
+      col = sex
+    )
+  ) +
+  geom_boxplot(col = "black") +
+  facet_grid(~ what, scales = "free") +
+  coord_flip() +
+  theme_bw(20) +
+  scale_fill_manual(values = c("orange", "grey60")) +
+  scale_color_viridis_d() +
+  # labs(
+  #   x = "",
+  #   y = "",
+  #   title = "Title here",
+  #   subtitle = "sub-title goes here",
+  #   caption = "some additional info here"
+  # ) +
+  theme(
+    legend.position = "top"
+  )
+```
+
+The data so far is **wide**: one row per participant-visit, with height, weight
+and waist in three separate columns. ggplot2 can only facet by a *column*, so it
+needs the data **long**: one row per participant-visit-*measure*, with a column
+saying which measure it is.
+
+`tidyr::pivot_longer()` does that conversion:
+
+- `cols = height:waist` — the columns to stack (`:` means "height through waist",
+  in column order)
+- `names_to = "what"` — a new column holding the old column *names*
+- `values_to = "value"` — a new column holding the *numbers*
+
+So each participant-visit row becomes three rows, `what` says `height`, `weight`
+or `waist`, and `value` holds the measurement. To see it for yourself, run the
+pipeline up to and including `pivot_longer()` and then `glimpse()`.
+
+`paste0("yr-", visit)` glues a prefix onto the visit number (`0` → `yr-0`) so the
+axis labels mean something without a caption.
+
+`facet_grid(~ what, scales = "free")` draws one panel per value of `what`. The
+`~ what` puts them in columns, side by side. `scales = "free"` lets each panel
+use its own value range — essential here, because height is in inches, weight
+in pounds, and on a shared axis the height boxes would be squashed into a sliver.
+The panels come out in alphabetical order, height–waist–weight.
+
+The commented-out `labs()` block is how you would add axis titles, a title, a
+subtitle and a caption for a figure headed for a paper or poster. Fill it in and
+uncomment it.
+
+::: {.callout-tip}
+## Going deeper
+Fill vs colour for every geom, choosing palettes, `facet_grid()` vs
+`facet_wrap()`, and saving a figure at print resolution with `ggsave()` are on
+the [ggplot2 anatomy deep-dive](module2-ggplot-anatomy.qmd).
+:::
+
+## Exercise 1: boxplots of the `_screen_` variables
+
+::: {.callout-note}
+## Exercise 1 · ~15 min
+`sub2` has four screen-time columns — the ones whose names contain `_screen_`:
+youth- and parent-reported, weekday and weekend. Make the same faceted boxplot
+for those four, one panel per screen-time measure.
+
+Hint: copy the height/weight/waist pipeline and change the columns you select
+and pivot. `matches("_screen_")` works inside `pivot_longer()` too.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: ex-1
+#| fig-alt: "Four panels of horizontal boxplots of screen time by visit and sex — parent-reported and youth-reported, weekday and weekend — with a few extreme outliers stretching the axes."
+#| fig-width: 12
+#| fig-height: 6
+#| warning: false
+sub2 |>
+  mutate(
+    sex = factor(
+      sex,
+      levels = c("Male", "Female")
+    )
+  ) |>
+  select(
+    participant_id,
+    visit,
+    sex,
+    matches("_screen_")
+  ) |>
+  tidyr::pivot_longer(
+    cols = matches("_screen_"),
+    names_to = "what",
+    values_to = "value"
+  ) |>
+  mutate(
+    visit = paste0("yr-", visit) |> factor(),
+    what = stringr::str_replace(what, "__screen__", "\n")
+  ) |>
+  ggplot(
+    aes(
+      x = visit,
+      y = value,
+      fill = sex
+    )
+  ) +
+  geom_boxplot(col = "black") +
+  facet_grid(~ what, scales = "free") +
+  coord_flip() +
+  theme_bw(20) +
+  scale_fill_manual(values = c("orange", "grey60")) +
+  theme(
+    legend.position = "top"
+  )
+```
+
+The one addition is `str_replace(what, "__screen__", "\n")`, which swaps the
+middle of each long variable name for a line break (`\n`) so the panel labels
+fit. Read `nt_p_yst` as the parent report and `nt_y_stq` as the youth's own.
+
+Look at how far the axes stretch. Those long tails are the implausible values
+from [section 3](#implausible-values) — 80 hours on a weekday — and they squash
+the boxes towards zero. A boxplot is often the first place a data-quality
+problem shows itself.
+
+Notice too that youth report more screen time than their parents do, and
+weekends more than weekdays.
+:::
+
+## Q2. Mean + Error bars
+
+The second question: how does weekday screen time change with age, and does it
+differ by sex? This time we plot a *summary* — the mean at each age — rather than
+the whole distribution.
+
+```{r}
+#| label: fig-screen-mean-se
+#| fig-cap: "Mean weekday screen time (youth report) by age and sex, ± 1 standard error"
+#| fig-alt: "Points joined by lines showing mean weekday screen time rising from about 4 hours a day at age 10 to about 8 to 10 hours at age 15, for females in orange and males in grey, with small error bars."
+#| fig-width: 10
+#| fig-height: 6
+sub2 |>
+  # summary()
+  select(
+    participant_id,
+    visit,
+    age,
+    sex,
+    screen_wkday = nt_y_stq__screen__wkdy_sum,
+    screen_wknd = nt_y_stq__screen__wknd_sum,
+    cbcl_int = mh_p_cbcl__synd__int_sum,
+    cbcl_ext = mh_p_cbcl__synd__ext_sum
+  ) |>
+  # count(age)
+  filter(
+    age >= 10 & age <= 15,
+    !is.na(screen_wkday),
+    !is.na(screen_wknd),
+    !is.na(cbcl_int),
+    !is.na(cbcl_ext)
+  ) |>
+  # summary()
+  mutate(
+    age = factor(age)
+  ) |>
+  group_by(age, sex) |>
+  reframe(
+    n = n(),
+    mean_screen_wkday = mean(screen_wkday),
+    mean_screen_wknd = mean(screen_wknd),
+    sd_wkday = sd(screen_wkday),
+    sd_wknd = sd(screen_wknd)
+  ) |>
+  mutate(
+    mean = mean_screen_wkday,
+    sd = sd_wkday,
+    se = sd / sqrt(n)
+  ) |>
+  ggplot(
+    aes(x = age, y = mean, fill = sex, col = sex, group = sex)
+  ) +
+  # geom_ribbon(
+  #   aes(
+  #     ymin = mean - se,
+  #     ymax =  mean + se
+  #   ),
+  #   alpha = 0.5
+  # ) +
+  # geom_line(
+  #   size = 2,
+  #   aes(col = sex)
+  # ) +
+  geom_errorbar(
+     aes(
+       ymin = mean - se,
+       ymax =  mean + se
+     ),
+     position = position_dodge(width = 0.7),
+     width = .3
+  ) +
+  geom_line(
+    position = position_dodge(width = 0.7)
+  ) +
+  geom_point(
+    position = position_dodge(width = 0.7),
+    size = 7
+  ) +
+  theme_bw(20) +
+  scale_color_manual(values = c("orange", "grey60")) +
+  scale_fill_manual(values = c("orange", "grey60")) +
+  theme(
+    legend.position = "top"
+  )
+```
+
+The longest pipeline so far. Taken in order:
+
+**Select and rename.** Keep eight columns, and give the four measures short names.
+
+**Filter.** `age >= 10 & age <= 15` keeps ages 10 to 15 — there are very few
+participants at 8, 9, 16 or 17, and means from a handful of people are noisy.
+Run the commented-out `count(age)` to see why. The four `!is.na(...)` conditions
+drop rows missing any of the measures, so every mean below is computed on the
+same people. (`!` means "not": `!is.na(x)` is "x is not missing".)
+
+**`age = factor(age)`.** Age is a whole number after the rounding in section 3.
+Making it a factor tells ggplot2 to treat each age as its own category on the
+x-axis, rather than as a continuous number line.
+
+**`group_by(age, sex)` + `reframe()`.** One row per age-and-sex combination,
+holding the count `n()`, the mean and the **standard deviation** (`sd()`) of
+weekday and weekend screen time. `reframe()` is a close relative of the
+`summarise()` from Module 1. Here the two give exactly the same result — use
+whichever you like. (`summarise()` would also print a message about the
+grouping; `reframe()` always returns an ungrouped table.)
+
+**`se = sd / sqrt(n)`.** The **standard error** of the mean. The `mutate()` first
+copies the weekday columns into generic `mean` and `sd` columns — so to plot
+weekend screen time instead, you change those two lines and nothing else.
+
+**The plot.**
+
+- `group = sex` tells `geom_line()` which points to join — one line per sex.
+  Without it, ggplot2 cannot tell which points belong together on a categorical
+  x-axis. It is the same job `group = 1` did in Module 1's line chart.
+- `geom_errorbar(aes(ymin = mean - se, ymax = mean + se))` draws a bar from one
+  standard error below the mean to one above. `width = .3` is the width of the
+  caps.
+- `position = position_dodge(width = 0.7)` nudges the two sexes apart
+  horizontally so their points and bars do not sit on top of each other. It must
+  be the **same** on every layer, or the bars, lines and points drift out of
+  alignment.
+- `geom_point(size = 7)` — the means themselves, drawn large.
+
+::: {.callout-important}
+## Why are the colours swapped?
+In Q1, males were orange. Here, females are. This pipeline never sets the factor
+order of `sex`, so R sorts the text alphabetically — `Female` before `Male` —
+and `scale_*_manual()` hands out colours in that order.
+
+To make the colours consistent across figures, add the same
+`mutate(sex = factor(sex, levels = c("Male", "Female")))` step from Q1. Setting
+the level order once, early in the pipeline, is the reliable fix.
+:::
+
+The commented-out `geom_ribbon()` + `geom_line()` pair is an alternative way to
+show the same numbers: a shaded band for ± 1 SE instead of bars, the usual style
+when x is a continuous variable. (If you uncomment it, change `size = 2` to
+`linewidth = 2` — `size` for lines is deprecated in current ggplot2.)
+
+### The numbers behind the plot
+
+A plot of means is a picture of a table. Stop the same pipeline before
+`ggplot()` to see that table:
+
+```{r}
+#| label: descriptive-table
+sub2 |>
+  select(
+    age,
+    sex,
+    screen_wkday = nt_y_stq__screen__wkdy_sum
+  ) |>
+  filter(
+    age >= 10 & age <= 15,
+    !is.na(screen_wkday)
+  ) |>
+  group_by(age, sex) |>
+  summarise(
+    n    = n(),
+    mean = mean(screen_wkday),
+    sd   = sd(screen_wkday),
+    se   = sd / sqrt(n),
+    .groups = "drop"
+  ) |>
+  mutate(across(mean:se, ~ round(.x, 2)))
+```
+
+(The counts differ slightly from the plot's, because this version only requires
+weekday screen time to be present, not all four measures.)
+
+This is a **descriptive statistics** table, and it is often what a paper's
+Table 1 is built from. Two numbers there describe spread, and they are easy to
+confuse:
+
+- **SD, standard deviation** — how much *individuals* vary around the mean. It
+  describes the people, and it does not shrink as you collect more of them.
+- **SE, standard error** — how precisely the *mean* is estimated. It is SD
+  divided by √n, so it shrinks as n grows — and grows with SD. The widest error
+  bar is for girls at 15: one of the smallest groups, and one of the most spread
+  out.
+
+::: {.callout-warning}
+## Error bars describe, they do not test
+Non-overlapping error bars are *not* a test of whether two groups differ, and
+overlapping ones do not show that they are the same. Whether the gap between
+girls and boys at 15 is more than noise is a question for a hypothesis test —
+which is exactly what [Module 3](module3.qmd) is about.
+:::
+
+## Exercise 2: a different measure
+
+::: {.callout-note}
+## Exercise 2 · ~10 min
+The Q2 pipeline already carries `cbcl_int`, the parent-reported CBCL
+internalizing score. Make the mean ± SE plot for `cbcl_int` by age and sex
+instead of screen time. Set the `sex` level order so that males are orange, as
+in Q1.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: ex-2
+#| fig-alt: "Mean CBCL internalizing score by age for males in orange and females in grey, with error bars; both rise from about 4 at age 10, and females are higher from age 11 onward, reaching about 7 at 15."
+#| fig-width: 10
+#| fig-height: 6
+sub2 |>
+  select(
+    age,
+    sex,
+    cbcl_int = mh_p_cbcl__synd__int_sum
+  ) |>
+  filter(
+    age >= 10 & age <= 15,
+    !is.na(cbcl_int)
+  ) |>
+  mutate(
+    age = factor(age),
+    sex = factor(sex, levels = c("Male", "Female"))
+  ) |>
+  group_by(age, sex) |>
+  reframe(
+    n = n(),
+    mean = mean(cbcl_int),
+    sd = sd(cbcl_int),
+    se = sd / sqrt(n)
+  ) |>
+  ggplot(
+    aes(x = age, y = mean, fill = sex, col = sex, group = sex)
+  ) +
+  geom_errorbar(
+    aes(
+      ymin = mean - se,
+      ymax = mean + se
+    ),
+    position = position_dodge(width = 0.7),
+    width = .3
+  ) +
+  geom_line(
+    position = position_dodge(width = 0.7)
+  ) +
+  geom_point(
+    position = position_dodge(width = 0.7),
+    size = 7
+  ) +
+  theme_bw(20) +
+  scale_color_manual(values = c("orange", "grey60")) +
+  scale_fill_manual(values = c("orange", "grey60")) +
+  labs(
+    x = "Age (years)",
+    y = "CBCL internalizing (mean ± SE)"
+  ) +
+  theme(
+    legend.position = "top"
+  )
+```
+
+Only the measure changed, plus the `sex` level order and a `labs()` layer for
+proper axis titles. The whole structure — filter, group, summarise, compute SE,
+plot with dodged error bars — is reusable for any continuous measure in the
+dataset.
+
+Reusable enough that copy-pasting it starts to feel wrong. The
+[functions deep-dive](module2-functions.qmd) turns it into a single line.
+:::
+
+## Take-home exercises
+
+Six exercises to work through on your own time, using parts of the dataset the
+session did not touch. They are loosely ordered by difficulty — ★ uses one or
+two ideas from today, ★★★ combines most of them. Each has a worked solution;
+try it properly before you open it.
+
+All of them start from `data` and `levels_dict` as loaded in sections 1 and 3,
+and the [dataset page](data.qmd) is your reference for what each column means.
+
+### T1 · When did remote visits happen? ★
+
+::: {.callout-note}
+## Take-home 1
+`ab_g_dyn__visit_type` records whether a visit was on-site, remote or hybrid —
+but as the codes `1`, `2`, `3`. Label it using `levels_dict`, then count how many
+visits of each type happened at each session. At which session were remote
+visits most common?
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: th-1
+visit_type_levels <- levels_dict |>
+  filter(name == "ab_g_dyn__visit_type") |>
+  arrange(order_level)
+
+visits <- data |>
+  mutate(
+    visit_type = factor(
+      ab_g_dyn__visit_type,
+      levels = visit_type_levels$value,
+      labels = visit_type_levels$label
+    )
+  )
+
+visits |>
+  count(session_id, visit_type) |>
+  tidyr::pivot_wider(
+    names_from = visit_type,
+    values_from = n,
+    values_fill = 0
+  )
+```
+
+Every baseline visit was on-site. Remote visits peak sharply at `ses-03A`, the
+3-year follow-up — the kind of pattern you see when outside events (a pandemic,
+say) interrupt data collection partway through a study.
+
+`pivot_wider()` spreads the counts into one column per visit type so the table
+reads like a crosstab. `values_fill = 0` writes `0` rather than `NA` where a
+combination never happened.
+:::
+
+### T2 · What does a remote visit cost? ★
+
+::: {.callout-note}
+## Take-home 2
+Using your labelled `visit_type` from T1, work out the **percentage** of height,
+weight and waist measurements that are missing for each visit type. Show it as a
+bar chart.
+
+Hint: `mean(is.na(x))` is the *proportion* missing — `is.na()` gives
+`TRUE`/`FALSE`, and the mean of those is the share that are `TRUE`.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: th-2
+#| fig-alt: "Bar chart of percentage missing for height, waist and weight by visit type; remote visits are around 80 percent missing for all three measures, while on-site and hybrid visits have no missing height or weight and about 6 percent missing waist."
+#| fig-width: 10
+#| fig-height: 5
+visits |>
+  group_by(visit_type) |>
+  summarise(
+    across(
+      c(height = ph_y_anthr__height_mean,
+        weight = ph_y_anthr__weight_mean,
+        waist  = ph_y_anthr__waist_001),
+      ~ 100 * mean(is.na(.x))
+    )
+  ) |>
+  tidyr::pivot_longer(
+    cols = height:waist,
+    names_to = "measure",
+    values_to = "pct_missing"
+  ) |>
+  ggplot(aes(x = visit_type, y = pct_missing, fill = measure)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  scale_fill_viridis_d() +
+  labs(x = NULL, y = "% missing", fill = NULL) +
+  theme_bw(20) +
+  theme(legend.position = "top")
+```
+
+Remote visits are missing about 80% of their body measurements. On-site and
+hybrid visits have no missing height or weight at all, and only about 6% missing
+waist. Nobody can measure a
+child's height over video.
+
+This is **structured missingness**: whether a value is missing depends on
+something else you know about the visit. Drop the incomplete rows and you drop
+remote visits disproportionately — which, from T1, means you drop the 3-year
+follow-up disproportionately. [Module 3](module3.qmd) takes this up.
+:::
+
+### T3 · Do parents and children agree about screen time? ★★
+
+::: {.callout-note}
+## Take-home 3
+The dataset has four screen-time columns: parent- and youth-reported, weekday
+and weekend. Make one figure showing the mean ± SE at each session, with
+**reporter** as colour and **weekday/weekend** as facets.
+
+Steps:
+
+1. Select the ID columns and the four `_screen_` columns, and pivot them long.
+2. From the old column name, make two new columns: `reporter` (`Parent` if the
+   name contains `_p_`, otherwise `Youth`) and `day` (`Weekday` if it contains
+   `wkdy`, otherwise `Weekend`). `stringr::str_detect()` tells you whether a
+   string contains a pattern.
+3. Drop values over 24 — there are only 24 hours in a day, and section 3 showed
+   some are impossible.
+4. Summarise and plot as in Q2.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: th-3
+#| fig-alt: "Two panels, weekday and weekend, each showing mean screen time rising across five sessions for parent reports and youth reports; youth report consistently more than parents, and the gap widens over time."
+#| fig-width: 12
+#| fig-height: 6
+data |>
+  select(participant_id, session_id, matches("_screen_")) |>
+  tidyr::pivot_longer(
+    cols = matches("_screen_"),
+    names_to = "what",
+    values_to = "hours"
+  ) |>
+  mutate(
+    reporter = if_else(stringr::str_detect(what, "_p_"), "Parent", "Youth"),
+    day      = if_else(stringr::str_detect(what, "wkdy"), "Weekday", "Weekend"),
+    visit    = stringr::str_replace(session_id, "ses-", "") |>
+      readr::parse_number() |>
+      factor()
+  ) |>
+  filter(hours <= 24) |>
+  group_by(visit, reporter, day) |>
+  summarise(
+    n    = n(),
+    mean = mean(hours),
+    se   = sd(hours) / sqrt(n),
+    .groups = "drop"
+  ) |>
+  ggplot(aes(x = visit, y = mean, colour = reporter, group = reporter)) +
+  geom_errorbar(
+    aes(ymin = mean - se, ymax = mean + se),
+    position = position_dodge(width = 0.4),
+    width = .3
+  ) +
+  geom_line(position = position_dodge(width = 0.4)) +
+  geom_point(position = position_dodge(width = 0.4), size = 4) +
+  facet_grid(~ day) +
+  scale_colour_manual(values = c(Parent = "grey40", Youth = "orange")) +
+  labs(x = "Visit (years since baseline)", y = "Screen time, hours (mean ± SE)", colour = NULL) +
+  theme_bw(20) +
+  theme(legend.position = "top")
+```
+
+`filter(hours <= 24)` also removes `NA`s, because `NA <= 24` is `NA` and
+`filter()` only keeps rows where the condition is `TRUE`. Handy, but worth knowing
+that it happens.
+
+Children report more screen time than their parents do at every visit, and the
+gap grows as they get older — plausibly because parents see less of it. Which
+report is "right" is not a question the data can answer, and it is exactly why
+ABCD collects both.
+
+The facets share a y-axis here (no `scales = "free"`), because both panels are in
+hours and the weekday–weekend comparison is part of the point.
+:::
+
+### T4 · Household income and vocabulary at baseline ★★
+
+::: {.callout-note}
+## Take-home 4
+At baseline only, compare the NIH Toolbox crystallized composite
+(`nc_y_nihtb__comp__cryst__agecorr_score`) across the three household income
+bands (`ab_g_dyn__cohort_income__hhold__3lvl`). Make a boxplot and a table of n,
+mean and SD per band.
+
+The income variable includes the codes `777` (decline to answer) and `999`
+(don't know). Decide what to do with them, and write one sentence saying why.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: th-4
+#| fig-alt: "Boxplots of NIH Toolbox crystallized score at baseline for three income bands, under 50k, 50k to 100k and over 100k, with medians rising across bands."
+#| fig-width: 9
+#| fig-height: 5.5
+#| warning: false
+income_levels <- levels_dict |>
+  filter(name == "ab_g_dyn__cohort_income__hhold__3lvl") |>
+  arrange(order_level)
+
+baseline_income <- data |>
+  filter(session_id == "ses-00A") |>
+  mutate(
+    income = factor(
+      ab_g_dyn__cohort_income__hhold__3lvl,
+      levels = income_levels$value,
+      labels = income_levels$label
+    ),
+    cryst = nc_y_nihtb__comp__cryst__agecorr_score
+  ) |>
+  filter(income %in% c("< 50k", "50k to 100k", "> 100k")) |>
+  mutate(income = droplevels(income))
+
+baseline_income |>
+  group_by(income) |>
+  summarise(
+    n    = sum(!is.na(cryst)),
+    mean = round(mean(cryst, na.rm = TRUE), 1),
+    sd   = round(sd(cryst, na.rm = TRUE), 1)
+  )
+
+baseline_income |>
+  ggplot(aes(x = income, y = cryst)) +
+  geom_boxplot(fill = "orange", col = "black") +
+  labs(x = "Household income", y = "NIH Toolbox crystallized\n(age-corrected)") +
+  theme_bw(20)
+```
+
+This solution **drops** `777` and `999`: they are not income bands, and they
+cannot sit on an ordered low-to-high axis. That is a defensible choice, not the
+only one — keeping them as their own category would let you check whether people
+who decline to answer differ from everyone else, which matters if you later want
+to generalise. Whatever you choose, say so in your methods.
+
+`droplevels()` removes the now-empty factor levels, so the plot does not show
+blank slots for them.
+
+The medians rise with income. Whether that difference is bigger than chance
+would produce, and whether it survives accounting for site, is a job for
+[Module 3](module3.qmd) — a boxplot describes, it does not test.
+:::
+
+### T5 · Individual trajectories ★★
+
+::: {.callout-note}
+## Take-home 5
+Mean ± SE plots hide the individuals. Plot mean cortical thickness
+(`mr_y_smri__thk__dsk_mean`) against age for **30 randomly chosen
+participants**, one faint line per person, with the average at each session
+drawn on top.
+
+Hints: pick the 30 IDs first with `distinct()` and `slice_sample()`, then
+`filter(participant_id %in% ...)`. For one line per person, map
+`group = participant_id`. A second layer can take its own data:
+`geom_line(data = other_table, ...)`.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: th-5
+#| fig-alt: "Thirty faint grey lines, one per participant, showing cortical thickness declining with age between about 9 and 16 years, with a thick orange line of session means on top that also slopes downward."
+#| fig-width: 10
+#| fig-height: 6
+#| warning: false
+set.seed(2026)   # so the random sample is the same every time
+
+some_ids <- data |>
+  distinct(participant_id) |>
+  slice_sample(n = 30) |>
+  pull(participant_id)
+
+thickness <- data |>
+  select(
+    participant_id,
+    session_id,
+    age = ab_g_dyn__visit_age,
+    thickness = mr_y_smri__thk__dsk_mean
+  ) |>
+  filter(!is.na(thickness))
+
+session_means <- thickness |>
+  group_by(session_id) |>
+  summarise(
+    age       = mean(age),
+    thickness = mean(thickness)
+  )
+
+thickness |>
+  filter(participant_id %in% some_ids) |>
+  ggplot(aes(x = age, y = thickness)) +
+  geom_line(aes(group = participant_id), colour = "grey60", alpha = 0.6) +
+  geom_point(colour = "grey60", size = 1) +
+  geom_line(data = session_means, colour = "orange", linewidth = 2) +
+  geom_point(data = session_means, colour = "orange", size = 5) +
+  labs(x = "Age (years)", y = "Mean cortical thickness (mm)") +
+  theme_bw(20)
+```
+
+`set.seed()` fixes R's random number generator, so `slice_sample()` picks the
+same 30 people every run — essential for anything you want to reproduce.
+
+MRI was only collected at baseline, year 2 and year 4, which is why each person
+has at most three points (and the average has three). Nearly every individual
+line slopes downward, at broadly similar rates, but they start at very
+different heights: people differ a lot in *level*, rather less in *slope*. That observation is the core idea
+behind the mixed-effects models used for longitudinal data — a reason Module 3
+cannot treat these rows as independent.
+:::
+
+### T6 · A "Table 1" ★★★
+
+::: {.callout-note}
+## Take-home 6
+Almost every paper opens with a table describing the sample. Build one for the
+baseline visit, **by sex**: n, and mean (SD) of age, height, weight, youth
+weekday screen time, and CBCL internalizing and externalizing.
+
+Aim for one row per variable and one column per sex, with cells that read like
+`10.1 (0.6)`.
+
+Hint: this is `summarise(across(..., list(mean = ..., sd = ...)))`, then a
+`pivot_longer()` and a `pivot_wider()`. `names_sep` in `pivot_longer()` can split
+a name like `age_mean` into two columns.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution
+```{r}
+#| label: th-6
+baseline <- data |>
+  filter(session_id == "ses-00A") |>
+  transmute(
+    sex = case_when(
+      ab_g_stc__cohort_sex == 1 ~ "Male",
+      ab_g_stc__cohort_sex == 2 ~ "Female"
+    ),
+    age      = ab_g_dyn__visit_age,
+    height   = ph_y_anthr__height_mean,
+    weight   = ph_y_anthr__weight_mean,
+    screen   = nt_y_stq__screen__wkdy_sum,
+    cbclint  = mh_p_cbcl__synd__int_sum,
+    cbclext  = mh_p_cbcl__synd__ext_sum
+  )
+
+counts <- baseline |> count(sex)
+counts
+
+baseline |>
+  group_by(sex) |>
+  summarise(
+    across(
+      age:cbclext,
+      list(
+        mean = ~ mean(.x, na.rm = TRUE),
+        sd   = ~ sd(.x, na.rm = TRUE)
+      )
+    )
+  ) |>
+  tidyr::pivot_longer(
+    cols = -sex,
+    names_to = c("variable", "stat"),
+    names_sep = "_"
+  ) |>
+  tidyr::pivot_wider(names_from = stat, values_from = value) |>
+  mutate(cell = sprintf("%.1f (%.1f)", mean, sd)) |>
+  select(variable, sex, cell) |>
+  tidyr::pivot_wider(names_from = sex, values_from = cell)
+```
+
+Three reshapes in a row, so step through it: run the pipeline one line at a time
+and `glimpse()` after each step.
+
+- `across()` with a named `list()` makes columns like `age_mean`, `age_sd`.
+- `pivot_longer(names_sep = "_")` splits each name at the `_` into `variable` and
+  `stat`. That is why the new columns are named `cbclint` rather than
+  `cbcl_int`: an extra underscore would split in the wrong place.
+- The first `pivot_wider()` puts `mean` and `sd` side by side so `sprintf()` can
+  format them into `"10.1 (0.6)"`. `%.1f` means "a number with one decimal
+  place", and unlike `round()` it keeps a trailing zero: `5.0`, not `5`.
+- The second `pivot_wider()` gives one column per sex.
+
+`transmute()` is `mutate()` that keeps only the columns it creates — a
+compact select-and-rename for when every column needs a new name.
+
+For a table going straight into a manuscript, packages such as **gtsummary**
+build this in one call. Building it by hand once is how you learn what those
+packages are doing.
+:::
+
+## What you can now do
+
+- Read an `.RDS` file and explain why it beats a CSV for R-to-R work
+- Call a function with `package::function()` without loading the package
+- Pick columns by position, name and pattern, renaming as you go
+- Recode values with `case_when()`, and transform many columns at once with `across()`
+- Attach labels from a lookup table with `left_join()`, and check that the join worked
+- Scan for implausible values before trusting a variable
+- Reshape wide data to long with `pivot_longer()`, and facet by the result
+- Control fill, colour, factor order, palettes, themes and legend position
+- Compute n, mean, SD and SE by group, and plot means with error bars
+
+## Recording
+
+The recording of the live session on Sep 24, 2026 will be posted here after the
+workshop.
+
+## Going further
+
+Optional, and none of it is assumed in Module 3:
+
+- [Wrangling deep-dive](module2-wrangling.qmd) — select helpers, `across()`,
+  recoding, joins, reshaping, and labelling every coded variable at once
+- [ggplot2 anatomy deep-dive](module2-ggplot-anatomy.qmd) — fill vs colour,
+  palettes, facets, dodging, themes, and saving figures
+- [Writing functions deep-dive](module2-functions.qmd) — turn today's pipelines
+  and plots into reusable functions
+- The [plot gallery](module1-plot-gallery.qmd) — more geoms: density, violin,
+  scatter + trend line, spaghetti plots
+- The [dataset reference](data.qmd) — every variable, every coded level, and why
+  the data is missing where it is
 - A [past workshop on this material](https://www.youtube.com/watch?v=7t9JhBJm1pg)
-- The [plot gallery](module1-plot-gallery.qmd) from Module 1 is a preview of where
-  this module starts
+- [R for Data Science](https://r4ds.hadley.nz), the chapters on data
+  visualization, data tidying and joins
+- The [ggplot2 cheatsheet](https://rstudio.github.io/cheatsheets/data-visualization.pdf)
+
+Next: [Module 3 · Inferential Statistics →](module3.qmd) on Oct 29, where the
+question moves from "what does the data look like?" to "is this difference
+real?".

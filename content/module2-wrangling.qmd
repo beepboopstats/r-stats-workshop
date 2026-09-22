@@ -1,0 +1,319 @@
+---
+title: "Deep-dive · Wrangling ABCD-Shaped Data"
+subtitle: "Optional companion to Module 2"
+pagetitle: "Wrangling: Joins, across() & Pivots | ABCD R Workshop"
+description-meta: "Select helpers, across(), case_when(), left_join() and pivot_longer() in R, applied to ABCD-shaped data — including labelling every coded variable at once."
+open-graph:
+  description: "Select helpers, across(), recoding, joins and pivots in dplyr and tidyr, on ABCD-shaped data."
+twitter-card:
+  description: "Select helpers, across(), recoding, joins and pivots in dplyr and tidyr, on ABCD-shaped data."
+editor_options:
+  chunk_output_type: console
+---
+
+This page expands on the data-wrangling steps in [Module 2](module2.qmd). Nothing
+here is needed for the session; it is for when you want to know what else the
+tools can do, or why they behave the way they do.
+
+```{r}
+#| label: setup
+library(dplyr)
+library(tidyr)
+library(readr)
+
+data <- readRDS("data/data.RDS")
+levels_dict <- read_csv("data/data_dictionary_levels.csv")
+```
+
+## Choosing columns
+
+Module 2 used `select()` by position, by name and by `matches()`. There are
+several other **selection helpers**, and they all work anywhere dplyr expects a
+set of columns — `select()`, `across()`, `pivot_longer(cols = ...)`:
+
+| Helper | Keeps columns whose name… |
+|:--|:--|
+| `starts_with("nc_")` | begins with `nc_` |
+| `ends_with("_sum")` | ends with `_sum` |
+| `contains("cbcl")` | contains `cbcl` anywhere, taken literally |
+| `matches("_(wkdy\|wknd)_")` | matches a *regular expression* |
+| `where(is.numeric)` | — this one tests the column's **contents**, not its name |
+
+ABCD's naming scheme makes these very effective. Every NIH Toolbox score:
+
+```{r}
+#| label: starts-with
+data |>
+  select(starts_with("nc_")) |>
+  names()
+```
+
+Every parent-reported variable — the second chunk of the name is the reporter:
+
+```{r}
+#| label: parent-reported
+data |>
+  select(matches("^[a-z]{2}_p_")) |>
+  names()
+```
+
+`^[a-z]{2}_p_` reads as "at the start, two lowercase letters, then `_p_`". You do
+not need to become fluent in regular expressions, but the handful that match
+ABCD's structure are worth keeping in a note.
+
+Helpers combine. `-` removes, and `&` means both:
+
+```{r}
+#| label: combine-helpers
+data |>
+  select(starts_with("mh_") & ends_with("_sum"), -contains("bisbas")) |>
+  names()
+```
+
+## Doing the same thing to many columns: `across()`
+
+`across()` applies one function to several columns inside `mutate()` or
+`summarise()`. It takes two arguments: *which* columns, and *what to do*.
+
+Module 2 wrote the function as `~ round(.x)`. That `~` form is a compact way to
+write a small function on the spot, with `.x` standing for each column in turn.
+When the function needs no extra arguments you can just name it:
+
+```{r}
+#| label: across-forms
+data |>
+  summarise(across(starts_with("nt_"), mean)) |>
+  glimpse()
+
+data |>
+  summarise(across(starts_with("nt_"), ~ mean(.x, na.rm = TRUE))) |>
+  glimpse()
+```
+
+The first gives `NA`s — `mean()` meets missing values and, as Module 1 showed,
+refuses to guess. The second passes `na.rm = TRUE`, and extra arguments are
+exactly the case the `~ .x` form exists for.
+
+Several summaries at once, with a named list:
+
+```{r}
+#| label: across-list
+data |>
+  group_by(session_id) |>
+  summarise(
+    across(
+      c(nt_y_stq__screen__wkdy_sum, nt_y_stq__screen__wknd_sum),
+      list(mean = ~ mean(.x, na.rm = TRUE), sd = ~ sd(.x, na.rm = TRUE))
+    )
+  )
+```
+
+The new columns are named `{column}_{function}` automatically.
+
+## Recoding values
+
+### `case_when()`
+
+Module 2 recoded `sex` with `case_when()`. Each line is `condition ~ result`.
+Lines are tried **top to bottom**, and the first match wins — so order matters
+when conditions overlap:
+
+```{r}
+#| label: case-when
+data |>
+  mutate(
+    screen_band = case_when(
+      nt_y_stq__screen__wkdy_sum > 24 ~ "implausible",
+      nt_y_stq__screen__wkdy_sum >= 6 ~ "6+ h",
+      nt_y_stq__screen__wkdy_sum >= 3 ~ "3–6 h",
+      nt_y_stq__screen__wkdy_sum >= 0 ~ "under 3 h",
+      .default = NA
+    )
+  ) |>
+  count(screen_band)
+```
+
+Put the `> 24` line last and it would never fire: those rows would already have
+matched `>= 6`.
+
+### `factor(levels, labels)`
+
+For coded variables with a dictionary, the [dataset page](data.qmd#labelling-one-variable)
+shows a different route: hand the codes and labels to `factor()`. This has two
+advantages over `case_when()` — you do not have to type the labels, so there is
+nothing to mistype, and the result is a factor that keeps the dictionary's
+order.
+
+`case_when()` is the right tool when you are *making* categories (like the
+screen-time bands above). `factor()` is the right tool when a dictionary
+already defines them.
+
+## Labelling every coded variable at once
+
+The dataset page labels one variable at a time and notes that doing all
+thirteen in one stroke needs more tools. Here they are.
+
+First, write the one-variable recipe as a **function** — a reusable piece of
+code with a name:
+
+```{r}
+#| label: label-function
+apply_labels <- function(x, var) {
+  lv <- levels_dict |>
+    filter(name == var) |>
+    arrange(order_level)
+
+  factor(x, levels = lv$value, labels = lv$label)
+}
+```
+
+`function(x, var)` declares two inputs: `x`, the column's values, and `var`, the
+column's name, used to look up its levels. The last line inside the braces is
+what the function returns.
+
+Then apply it with `across()`. `any_of()` selects every column that appears in
+the dictionary, and `cur_column()` tells the function which column it is
+currently working on:
+
+```{r}
+#| label: label-all
+data_labelled <- data |>
+  mutate(
+    across(
+      any_of(unique(levels_dict$name)),
+      ~ apply_labels(.x, cur_column())
+    )
+  )
+
+data_labelled |> count(ab_g_dyn__visit_type)
+data_labelled |> count(ab_g_dyn__cohort_income__hhold__3lvl)
+```
+
+Thirteen variables, one pipeline. Check the labelling did not invent missing
+values — a code missing from the dictionary would silently become `NA`:
+
+```{r}
+#| label: label-check
+coded <- intersect(names(data), levels_dict$name)
+
+tibble(
+  variable = coded,
+  na_before = sapply(coded, \(v) sum(is.na(data[[v]]))),
+  na_after  = sapply(coded, \(v) sum(is.na(data_labelled[[v]])))
+)
+```
+
+Identical counts: every code found its label. (`\(v)` is shorthand for
+`function(v)`.)
+
+## Joins
+
+A **join** combines two tables by matching values in a key column. Module 2 used
+`left_join()` to attach site names. The family:
+
+| Join | Keeps |
+|:--|:--|
+| `left_join(x, y)` | every row of `x`; columns from `y` where they match, `NA` where they do not |
+| `inner_join(x, y)` | only rows that match in both |
+| `full_join(x, y)` | every row of both |
+| `anti_join(x, y)` | rows of `x` with **no** match in `y` — the one for finding problems |
+
+`left_join()` is the everyday choice for "look up extra information". It never
+loses a row of your data, so a failed match shows up as an `NA`, not as a
+participant silently disappearing.
+
+`anti_join()` is the checking tool. Which site codes in the data have no entry
+in the dictionary?
+
+```{r}
+#| label: anti-join
+site_levels <- levels_dict |>
+  filter(name == "ab_g_dyn__design_site") |>
+  transmute(value = as.character(value), site_label = label)
+
+data |>
+  mutate(site = as.character(ab_g_dyn__design_site)) |>
+  distinct(site) |>
+  anti_join(site_levels, join_by(site == value))
+```
+
+Zero rows: every site matched.
+
+### Why Module 2 converted both keys to character
+
+Keys must be the same type. In the data, site is a **factor**; in the levels
+dictionary, `value` is a **number**. Try joining them as they are:
+
+```{r}
+#| label: join-type-error
+#| error: true
+data |>
+  left_join(
+    levels_dict |> filter(name == "ab_g_dyn__design_site"),
+    join_by(ab_g_dyn__design_site == value)
+  )
+```
+
+The error is helpful: it names both columns and both types. Converting each side
+with `as.character()` gives them a common type that preserves the codes exactly.
+
+::: {.callout-warning}
+## Do not use `as.numeric()` on a factor
+It is tempting to convert the factor to a number instead. But `as.numeric()` on a
+factor returns the level's **position**, not the value printed on it. Here the
+levels happen to be `"1"` to `"22"` in order, so it would work by luck. With
+levels like `"777"` or out-of-order codes, it quietly gives wrong numbers. Go via
+`as.character()` first, or join as text.
+:::
+
+## Reshaping: long and wide
+
+`pivot_longer()` stacks columns into rows; `pivot_wider()` spreads them back. The
+two are inverses.
+
+```{r}
+#| label: pivot-longer
+anthro_long <- data |>
+  select(participant_id, session_id, starts_with("ph_y_anthr")) |>
+  pivot_longer(
+    cols = starts_with("ph_y_anthr"),
+    names_to = "measure",
+    values_to = "value"
+  )
+
+anthro_long
+```
+
+Three times the rows, three columns fewer. Long data is what ggplot2 wants for
+faceting and colouring by "which measure", and what `group_by()` wants for "the
+same summary for each measure":
+
+```{r}
+#| label: long-summary
+anthro_long |>
+  group_by(measure) |>
+  summarise(
+    n_present = sum(!is.na(value)),
+    mean      = mean(value, na.rm = TRUE)
+  )
+```
+
+`pivot_wider()` goes the other way. A common longitudinal use: one row per
+participant, one column per visit — handy for looking at each person's
+trajectory, and the shape a paired test in Module 3 will want:
+
+```{r}
+#| label: pivot-wider
+data |>
+  select(participant_id, session_id, nt_y_stq__screen__wkdy_sum) |>
+  pivot_wider(
+    names_from = session_id,
+    values_from = nt_y_stq__screen__wkdy_sum
+  )
+```
+
+The `NA`s on the right are participants who had left the study by that visit —
+the attrition described on the [dataset page](data.qmd#what-is-missing-and-why),
+now visible as gaps in a row rather than as absent rows.
+
+Back to [Module 2](module2.qmd).
