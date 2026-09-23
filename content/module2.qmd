@@ -11,6 +11,10 @@ editor_options:
   chunk_output_type: console
 ---
 
+::: {.callout-warning}
+This page is under active development. The content might change.
+:::
+
 **Designed for** someone with a basic knowledge of R and RStudio — which
 [Module 1](module1.qmd) provides.
 
@@ -856,14 +860,12 @@ Reusable enough that copy-pasting it starts to feel wrong. The
 ## Take-home exercises
 
 Six exercises to work through on your own time, using parts of the dataset the
-session did not touch. They are loosely ordered by difficulty — ★ uses one or
-two ideas from today, ★★★ combines most of them. Each has a worked solution;
-try it properly before you open it.
+session did not touch.
 
 All of them start from `data` and `levels_dict` as loaded in sections 1 and 3,
 and the [dataset page](data.qmd) is your reference for what each column means.
 
-### T1 · When did remote visits happen? ★
+### T1 · When did remote visits happen?
 
 ::: {.callout-note}
 ## Take-home 1
@@ -875,7 +877,10 @@ visits most common?
 
 ::: {.callout-tip collapse="true"}
 ## Solution
-```{r}
+
+> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
+
+```{r echo=FALSE}
 #| label: th-1
 visit_type_levels <- levels_dict |>
   filter(name == "ab_g_dyn__visit_type") |>
@@ -908,7 +913,7 @@ reads like a crosstab. `values_fill = 0` writes `0` rather than `NA` where a
 combination never happened.
 :::
 
-### T2 · What does a remote visit cost? ★
+### T2 · What does a remote visit cost?
 
 ::: {.callout-note}
 ## Take-home 2
@@ -922,7 +927,10 @@ Hint: `mean(is.na(x))` is the *proportion* missing — `is.na()` gives
 
 ::: {.callout-tip collapse="true"}
 ## Solution
-```{r}
+
+> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
+
+```{r echo=FALSE}
 #| label: th-2
 #| fig-alt: "Bar chart of percentage missing for height, waist and weight by visit type; remote visits are around 80 percent missing for all three measures, while on-site and hybrid visits have no missing height or weight and about 6 percent missing waist."
 #| fig-width: 10
@@ -961,7 +969,7 @@ remote visits disproportionately — which, from T1, means you drop the 3-year
 follow-up disproportionately. [Module 3](module3.qmd) takes this up.
 :::
 
-### T3 · Do parents and children agree about screen time? ★★
+### T3 · Do parents and children agree about screen time?
 
 ::: {.callout-note}
 ## Take-home 3
@@ -983,7 +991,10 @@ Steps:
 
 ::: {.callout-tip collapse="true"}
 ## Solution
-```{r}
+
+> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
+
+```{r echo=FALSE}
 #| label: th-3
 #| fig-alt: "Two panels, weekday and weekend, each showing mean screen time rising across five sessions for parent reports and youth reports; youth report consistently more than parents, and the gap widens over time."
 #| fig-width: 12
@@ -1038,7 +1049,7 @@ The facets share a y-axis here (no `scales = "free"`), because both panels are i
 hours and the weekday–weekend comparison is part of the point.
 :::
 
-### T4 · Household income and vocabulary at baseline ★★
+### T4 · Household income and vocabulary at baseline
 
 ::: {.callout-note}
 ## Take-home 4
@@ -1053,7 +1064,10 @@ The income variable includes the codes `777` (decline to answer) and `999`
 
 ::: {.callout-tip collapse="true"}
 ## Solution
-```{r}
+
+> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
+
+```{r echo=FALSE}
 #| label: th-4
 #| fig-alt: "Boxplots of NIH Toolbox crystallized score at baseline for three income bands, under 50k, 50k to 100k and over 100k, with medians rising across bands."
 #| fig-width: 9
@@ -1105,7 +1119,7 @@ would produce, and whether it survives accounting for site, is a job for
 [Module 3](module3.qmd) — a boxplot describes, it does not test.
 :::
 
-### T5 · Individual trajectories ★★
+### T5 · Individual trajectories
 
 ::: {.callout-note}
 ## Take-home 5
@@ -1122,7 +1136,10 @@ Hints: pick the 30 IDs first with `distinct()` and `slice_sample()`, then
 
 ::: {.callout-tip collapse="true"}
 ## Solution
-```{r}
+
+> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
+
+```{r echo=FALSE}
 #| label: th-5
 #| fig-alt: "Thirty faint grey lines, one per participant, showing cortical thickness declining with age between about 9 and 16 years, with a thick orange line of session means on top that also slopes downward."
 #| fig-width: 10
@@ -1173,7 +1190,7 @@ behind the mixed-effects models used for longitudinal data — a reason Module 3
 cannot treat these rows as independent.
 :::
 
-### T6 · A "Table 1" ★★★
+### T6 · Demographics table
 
 ::: {.callout-note}
 ## Take-home 6
@@ -1191,7 +1208,10 @@ a name like `age_mean` into two columns.
 
 ::: {.callout-tip collapse="true"}
 ## Solution
-```{r}
+
+> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
+
+```{r echo=FALSE}
 #| label: th-6
 baseline <- data |>
   filter(session_id == "ses-00A") |>
@@ -1208,8 +1228,8 @@ baseline <- data |>
     cbclext  = mh_p_cbcl__synd__ext_sum
   )
 
-counts <- baseline |> count(sex)
-counts
+# counts <- baseline |> count(sex)
+# counts
 
 baseline |>
   group_by(sex) |>
