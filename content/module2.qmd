@@ -1287,8 +1287,17 @@ packages are doing.
 
 ## Recording
 
-The recording of the live session on Sep 24, 2026 will be posted here after the
-workshop.
+The following recording is of the live workshop hosted on Sep 24, 2026.
+
+::: {.callout-warning}
+
+The topics covered during the live session is a smaller subset of all
+the materials displayed above. We highly recommend you go through this entire
+page and the exercises to get comfortable with the contents / topics of
+Module 2.
+:::
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/5UZjOOKCt14?si=Mgww37ySzmgXGtbh" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## Going further
 
