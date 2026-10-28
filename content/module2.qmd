@@ -878,9 +878,7 @@ visits most common?
 ::: {.callout-tip collapse="true"}
 ## Solution
 
-> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
-
-```{r echo=FALSE}
+```{r}
 #| label: th-1
 visit_type_levels <- levels_dict |>
   filter(name == "ab_g_dyn__visit_type") |>
@@ -928,9 +926,7 @@ Hint: `mean(is.na(x))` is the *proportion* missing — `is.na()` gives
 ::: {.callout-tip collapse="true"}
 ## Solution
 
-> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
-
-```{r echo=FALSE}
+```{r}
 #| label: th-2
 #| fig-alt: "Bar chart of percentage missing for height, waist and weight by visit type; remote visits are around 80 percent missing for all three measures, while on-site and hybrid visits have no missing height or weight and about 6 percent missing waist."
 #| fig-width: 10
@@ -992,9 +988,7 @@ Steps:
 ::: {.callout-tip collapse="true"}
 ## Solution
 
-> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
-
-```{r echo=FALSE}
+```{r}
 #| label: th-3
 #| fig-alt: "Two panels, weekday and weekend, each showing mean screen time rising across five sessions for parent reports and youth reports; youth report consistently more than parents, and the gap widens over time."
 #| fig-width: 12
@@ -1065,9 +1059,7 @@ The income variable includes the codes `777` (decline to answer) and `999`
 ::: {.callout-tip collapse="true"}
 ## Solution
 
-> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
-
-```{r echo=FALSE}
+```{r}
 #| label: th-4
 #| fig-alt: "Boxplots of NIH Toolbox crystallized score at baseline for three income bands, under 50k, 50k to 100k and over 100k, with medians rising across bands."
 #| fig-width: 9
@@ -1137,9 +1129,7 @@ Hints: pick the 30 IDs first with `distinct()` and `slice_sample()`, then
 ::: {.callout-tip collapse="true"}
 ## Solution
 
-> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
-
-```{r echo=FALSE}
+```{r}
 #| label: th-5
 #| fig-alt: "Thirty faint grey lines, one per participant, showing cortical thickness declining with age between about 9 and 16 years, with a thick orange line of session means on top that also slopes downward."
 #| fig-width: 10
@@ -1209,9 +1199,7 @@ a name like `age_mean` into two columns.
 ::: {.callout-tip collapse="true"}
 ## Solution
 
-> SOLUTION CODE WILL BE PROVIDED NEXT WEEK.
-
-```{r echo=FALSE}
+```{r}
 #| label: th-6
 baseline <- data |>
   filter(session_id == "ses-00A") |>
