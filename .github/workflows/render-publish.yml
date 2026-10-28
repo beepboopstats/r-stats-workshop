@@ -30,6 +30,21 @@ jobs:
           r-version: '4.5.2'
           use-public-rspm: true
 
+      # The P3M binaries install fine, but several link system shared
+      # libraries at load time that ubuntu-latest does not ship. renv's
+      # post-install load test then fails (e.g. magick needs
+      # libMagick++-7.Q16.so.5 from libmagick++-dev). Install them before
+      # restore. This is the set renv itself reports as missing.
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake \
+            gsfonts \
+            libcurl4-openssl-dev \
+            libmagick++-dev \
+            libx11-dev
+
       # Restores from renv.lock and caches the library, keyed on the
       # lockfile hash -- so this step is slow once, then near-instant
       # until a dependency actually changes.
