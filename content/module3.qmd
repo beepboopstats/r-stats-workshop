@@ -105,17 +105,22 @@ shape every analysis on this page:
 
 ## 0. Load libraries
 
-Every template loads the same core, plus one or two packages for its assumption
-checks. Install any you are missing with `install.packages("car")` and so on.
+Following the convention from [Module 2](module2.qmd), we load only the two
+workhorses — **dplyr** and **ggplot2** — with `library()`. Every function from
+another package is written with its package name attached, like `tidyr::drop_na()`
+or `car::leveneTest()`, so you can always see at a glance where a function comes
+from.
 
 ```{r}
 #| label: libraries
-library(ggplot2)  # figures
 library(dplyr)    # data wrangling
-library(car)      # Levene's test (equal variances)
-library(moments)  # skewness and kurtosis
-library(lmtest)   # Breusch-Pagan test (regression)
+library(ggplot2)  # figures
 ```
+
+You will also need these installed —
+`install.packages(c("tidyr", "car", "moments", "lmtest"))`: **tidyr** for
+`drop_na()` and `pivot_wider()`, **car** for Levene's test, **moments** for
+skewness and kurtosis, and **lmtest** for the Breusch-Pagan test.
 
 ## Anatomy of a template
 
@@ -163,15 +168,14 @@ clean <- data |>
   ) |>
   filter(session_id == "ses-00A") |>       # baseline only -- no longitudinal modelling here
   mutate(
-    sex = case_when(
+    sex = case_when(                        # recode the codes...
       sex == 1 ~ "Male",
       sex == 2 ~ "Female",
       .default = NA
-    ),
-    sex = as.factor(sex)                    # grouping variables should be factors
-  )
-
-clean <- clean[complete.cases(clean), ]     # complete-case analysis (a choice, not a default)
+    ) |>
+      factor(levels = c("Female", "Male"))  # ...then make it a factor
+  ) |>
+  tidyr::drop_na(family_id, sex, height)    # complete-case analysis (a choice, not a default)
 
 glimpse(clean)
 ```
@@ -209,10 +213,30 @@ hugging the line mean "normal."
 
 ```{r}
 #| label: tt-normality
-by(clean$height, clean$sex, shapiro.test)  # normality within each group
-by(clean$height, clean$sex, skewness)
-by(clean$height, clean$sex, kurtosis)      # moments::kurtosis() centres a normal at 3
+clean |>
+  group_by(sex) |>
+  summarise(
+    shapiro_p = shapiro.test(height)$p.value,  # p > 0.05 is reassuring
+    skew      = moments::skewness(height),     # aim for roughly within +/- 2
+    kurtosis  = moments::kurtosis(height)      # moments::kurtosis() centres a normal at 3
+  )
 ```
+
+::: {.callout-tip}
+## You will also see `by()`
+Base R does the same per-group check with `by()` — it splits a vector by a
+grouping factor and applies a function to each piece. You will meet it in older
+scripts and other people's code, so it is worth recognising:
+
+```{r}
+#| label: tt-normality-base
+by(clean$height, clean$sex, shapiro.test)
+```
+
+We use `group_by() |> summarise()` on this page because it returns a tidy table
+and folds skewness and kurtosis into the same call — but the two give the same
+Shapiro-Wilk result.
+:::
 
 ```{r}
 #| label: fig-tt-qq
@@ -233,7 +257,7 @@ Welch's correction (`var.equal = FALSE`).
 
 ```{r}
 #| label: tt-levene
-leveneTest(height ~ sex, data = clean)
+car::leveneTest(height ~ sex, data = clean)
 ```
 
 ## Engineer independence
@@ -274,15 +298,12 @@ standard-deviation units. Rough guide: 0.2 small, 0.5 medium, 0.8 large.
 
 ```{r}
 #| label: tt-effect
-group_means <- tapply(clean_no_sibs$height, clean_no_sibs$sex, mean)
-group_sds   <- tapply(clean_no_sibs$height, clean_no_sibs$sex, sd)
-group_ns    <- tapply(clean_no_sibs$height, clean_no_sibs$sex, length)
+d <- clean_no_sibs |>
+  group_by(sex) |>
+  summarise(n = n(), mean = mean(height), sd = sd(height))
 
-pooled_sd <- sqrt(((group_ns[1] - 1) * group_sds[1]^2 +
-                   (group_ns[2] - 1) * group_sds[2]^2) /
-                  (sum(group_ns) - 2))
-
-cohens_d <- abs(diff(group_means)) / pooled_sd
+pooled_sd <- sqrt(sum((d$n - 1) * d$sd^2) / (sum(d$n) - 2))
+cohens_d  <- abs(diff(d$mean)) / pooled_sd
 cat("Cohen's d:", round(cohens_d, 3), "\n")
 ```
 
@@ -324,6 +345,7 @@ clean <- data |>
   ) |>
   filter(session_id == "ses-00A") |>
   mutate(
+    # case_when() recodes; factor(levels = …) fixes the order for plots and post-hoc tests
     parental_edu = case_when(
       parental_edu == 1 ~ "less_than_HS",
       parental_edu == 2 ~ "HS_diploma",
@@ -331,15 +353,12 @@ clean <- data |>
       parental_edu == 4 ~ "bachelor_degree",
       parental_edu == 5 ~ "graduate_degree",
       .default = NA
-    ),
-    # factor() with explicit levels fixes the order for plots and post-hoc tests
-    parental_edu = factor(parental_edu, levels = c(
-      "less_than_HS", "HS_diploma", "some_college",
-      "bachelor_degree", "graduate_degree"
-    ))
-  )
+    ) |>
+      factor(levels = c("less_than_HS", "HS_diploma", "some_college",
+                        "bachelor_degree", "graduate_degree"))
+  ) |>
+  tidyr::drop_na(family_id, parental_edu, height)
 
-clean <- clean[complete.cases(clean), ]
 glimpse(clean)
 ```
 
@@ -366,14 +385,18 @@ groups are reasonably sized.
 
 ```{r}
 #| label: aov-normality
-by(clean$height, clean$parental_edu, shapiro.test)
-by(clean$height, clean$parental_edu, skewness)
-by(clean$height, clean$parental_edu, kurtosis)
+clean |>
+  group_by(parental_edu) |>
+  summarise(
+    shapiro_p = shapiro.test(height)$p.value,
+    skew      = moments::skewness(height),
+    kurtosis  = moments::kurtosis(height)
+  )
 ```
 
 ```{r}
 #| label: aov-levene
-leveneTest(height ~ parental_edu, data = clean)
+car::leveneTest(height ~ parental_edu, data = clean)
 ```
 
 ## Engineer independence and run the ANOVA
@@ -470,9 +493,9 @@ clean <- data |>
     weight    = ph_y_anthr__weight_mean,  # predictor
     height    = ph_y_anthr__height_mean   # outcome
   ) |>
-  filter(session_id == "ses-00A")
+  filter(session_id == "ses-00A") |>
+  tidyr::drop_na(family_id, weight, height)
 
-clean <- clean[complete.cases(clean), ]
 glimpse(clean)
 ```
 
@@ -520,7 +543,7 @@ look like a flat, shapeless band — no funnel, no curve.
 ```{r}
 #| label: reg-residuals
 shapiro.test(residuals(reg_result))  # normality of residuals
-bptest(reg_result)                   # Breusch-Pagan: constant variance?
+lmtest::bptest(reg_result)           # Breusch-Pagan: constant variance?
 ```
 
 ```{r}
@@ -605,9 +628,9 @@ sol <- data |>
          sex       = ab_g_stc__cohort_sex,
          weight    = ph_y_anthr__weight_mean) |>
   filter(session_id == "ses-00A") |>
-  mutate(sex = factor(case_when(sex == 1 ~ "Male", sex == 2 ~ "Female")))
-
-sol <- sol[complete.cases(sol), ]
+  mutate(sex = case_when(sex == 1 ~ "Male", sex == 2 ~ "Female", .default = NA) |>
+           factor(levels = c("Female", "Male"))) |>
+  tidyr::drop_na(family_id, sex, weight)
 
 set.seed(1996)
 sol_no_sibs <- sol |> group_by(family_id) |> slice_sample(n = 1) |> ungroup()

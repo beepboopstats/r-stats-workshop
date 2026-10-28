@@ -22,17 +22,20 @@
 # Load Libraries
 #-------------------------------------------------------------------------------
 # Load in all the necessary libraries and packages
+# We load only our two workhorse packages with library(): dplyr and ggplot2.
+# Every other function is written with its package attached (e.g. tidyr::drop_na(),
+# moments::skewness(), lmtest::bptest()) -- the same convention as Module 2 -- so
+# you can always see which package a function comes from. You still need those
+# packages installed (see the install.packages() lines below).
 library(ggplot2)        # for visualizations
 library(dplyr)          # for data manipulation
-library(moments)        # for skew and kurtosis
-library(lmtest)         # for Breusch-Pagan test (homoscedasticity)
-library(summarytools)   # for a great visualization tool
 
 # The function below is commented out; however, if you needed to install a package for the first time, you could un-comment it
 # The comment and un-comment shortcut is "CNTRL + Shift + C" for PC and "CMD + Shift + C" for MAC
 ## You can also just delete the "#"
 # install.packages("ggplot2")
 # install.packages("dplyr")
+# install.packages("tidyr")
 # install.packages("moments")
 # install.packages("lmtest")
 # install.packages("summarytools")
@@ -70,7 +73,7 @@ View(data) # This opens your data up as a new tab
 # Neat! But overwhelming
 
 # Let's look at it in a clean table format
-dfSummary(data) |> stview()
+summarytools::dfSummary(data) |> summarytools::stview()
 
 #-------------------------------------------------------------------------------
 # Explore and clean SOME of our data
@@ -84,65 +87,36 @@ dfSummary(data) |> stview()
 ## Here is that code, but I usually don't keep it in my scripts. Instead I just type it straight into the console as needed
 ### names(data)
 
-# Create a new data frame with our variables of interest
-## Using the names() function can help us quickly pick out what we need
-clean <- subset(data, select = c(participant_id,            # we need to know who is who
-                                 session_id,                # we need to know when our data is collected since we have longitudinal data
-                                 ab_g_stc__design_id__fam,  # gonna need this later for assumption of independence
-                                 ph_y_anthr__weight_mean,   # our weight variable (our predictor; yuck name we'll fix later)
-                                 ph_y_anthr__height_mean    # our height variable (our outcome; yuck name we'll fix later)
-                                 ## Important thing to NOT include is a comma after "ph_y_anthr__height_mean" since that is our last variable
-))
-
-# Should have a new data set called clean with 2295 obs. of 5 variables
-## Can use View(clean) or just click on "clean" in the Global Environment
-
-# We don't want to do any longitudinal analyses, so let's get rid of everything besides our baseline visit
-## Baseline = ses-00A under the session_id column
-### You can find this nomenclature here: https://docs.abcdstudy.org/latest/
-
-# Remove all timepoints besides baseline
-clean <- subset(clean, session_id == "ses-00A")
-## In English, this is saying:
-### 1) save to the clean data frame
-### 2) take a subset of the data from the clean data frame
-### 3) look at the session_id column
-### 4) only keep the rows that say ses-00A. Drop all the others
-## Be careful of the "==" here
-
-# Should have replaced the old clean data set with a new data set also called clean with 500 obs. of 5 variables
-## Can use View(clean) or just click on "clean" in the Global Environment
-
-# Change variable names
-clean <- clean |>
+# We'll build our analysis data set in ONE pipeline, the same tidyverse style you
+# learned in Modules 1 and 2: select() the columns, filter() the rows, and
+# drop_na() to handle missing data. Read "|>" as "and then".
+## (No recoding needed here -- both weight and height are already numeric.)
+clean <- data |>
+  # select() our variables of interest, renaming the cryptic ones as new_name = old_name
   select(
-    participant_id,
-    session_id,
-    family_id = ab_g_stc__design_id__fam,
-    weight    = ph_y_anthr__weight_mean,
-    height    = ph_y_anthr__height_mean
-  )
+    participant_id,                       # we need to know who is who
+    session_id,                           # we need to know when our data was collected (longitudinal)
+    family_id = ab_g_stc__design_id__fam, # gonna need this later for assumption of independence
+    weight    = ph_y_anthr__weight_mean,  # our predictor (renamed from its yuck name)
+    height    = ph_y_anthr__height_mean   # our outcome (renamed from its yuck name)
+  ) |>
+  # filter() keeps ONLY our baseline visit -- we don't want longitudinal analyses here
+  ## Baseline = ses-00A under the session_id column (see https://docs.abcdstudy.org/latest/)
+  filter(session_id == "ses-00A") |>
+  # drop_na() removes anyone missing our variables of interest ("complete-case analysis")
+  ## This is NOT the best way to handle missing data (multiple imputation is better),
+  ## but that is well outside the scope of what we are doing here
+  tidyr::drop_na(family_id, weight, height)
 
 # We now have our variables of interest!
-
-
-# What to do with missing data?
-## This is a tricky thing to handle on someone's best day
-## For our instances, we are only going to be using "complete cases"
-### This means everyone has to have complete data to be kept
-### Anyone missing data from our variables of interest will be removed completely from analyses
-#### This is NOT the best way to handle missing data (multiple imputation is generally considered the best)
-#### HOWEVER, that is well outside the scope of what we are doing here
-
-# Removing missing data
-## Basically, only keep the complete cases you find in the clean data set
-clean <- clean[complete.cases(clean), ]
+## Should be about 500 participants at baseline, minus anyone missing weight or height
+## Can use View(clean) or just click on "clean" in the Global Environment
 
 #-------------------------------------------------------------------------------
 # Visualize variables of interest
 #-------------------------------------------------------------------------------
 # Let's look at it in a clean table format
-dfSummary(clean) |> stview()
+summarytools::dfSummary(clean) |> summarytools::stview()
 
 # Let's look at the relationship between weight (predictor) and height (outcome)
 ggplot(clean, aes(x = weight, y = height)) +
@@ -168,14 +142,14 @@ shapiro.test(clean$weight)
 ## Skewness:
 ### Acceptable range: -2 to +2
 ### |skew| > 2 indicates problematic skew for normality
-skewness(clean$height)
-skewness(clean$weight)
+moments::skewness(clean$height)
+moments::skewness(clean$weight)
 
 ## Kurtosis (excess kurtosis, where normal = 3 using moments::kurtosis()):
 ### Acceptable range: -7 to +7 (for excess kurtosis referenced to 0)
 ### Note: moments::kurtosis() returns kurtosis where 3 = normal, so subtract 3 if you want excess kurtosis
-kurtosis(clean$height)
-kurtosis(clean$weight)
+moments::kurtosis(clean$height)
+moments::kurtosis(clean$weight)
 
 # Q-Q plot to visually check normality of height
 ## Basically, you want the dots to fall along the line and not scatter
@@ -256,7 +230,7 @@ ggplot(data.frame(residuals = residuals(reg_result)), aes(sample = residuals)) +
 
 # --- 2. Homoscedasticity (constant variance of residuals) ---
 ## Breusch-Pagan test: p > 0.05 suggests homoscedasticity (equal variance across fitted values)
-bptest(reg_result)
+lmtest::bptest(reg_result)
 
 ## Residuals vs. Fitted plot: you want a flat, horizontal spread with no clear funnel shape
 ggplot(data.frame(fitted   = fitted(reg_result),

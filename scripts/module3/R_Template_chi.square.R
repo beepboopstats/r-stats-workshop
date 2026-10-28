@@ -23,15 +23,20 @@
 # Load Libraries
 #-------------------------------------------------------------------------------
 # Load in all the necessary libraries and packages
+# We load only our two workhorse packages with library(): dplyr and ggplot2.
+# Every other function is written with its package attached (e.g. tidyr::drop_na(),
+# tidyr::pivot_wider()) -- the same convention as Module 2 -- so you can always see
+# which package a function comes from. You still need those packages installed
+# (see the install.packages() lines below).
 library(ggplot2)      # for visualizations
 library(dplyr)        # for data manipulation
-library(summarytools) # for a great visualization tool
 
 # The functions below are commented out; however, if you needed to install a package for the first time, you could un-comment it
 # The comment and un-comment shortcut is "CNTRL + Shift + C" for PC and "CMD + Shift + C" for MAC
 ## You can also just delete the "#"
 # install.packages("ggplot2")
 # install.packages("dplyr")
+# install.packages("tidyr")
 # install.packages("summarytools")
 
 #-------------------------------------------------------------------------------
@@ -68,7 +73,7 @@ View(data) # This opens your data up as a new tab
 # Neat! But overwhelming
 
 # Let's look at it in a clean table format
-dfSummary(data) |> stview()
+summarytools::dfSummary(data) |> summarytools::stview()
 
 #-------------------------------------------------------------------------------
 # Explore and clean SOME of our data
@@ -82,53 +87,47 @@ dfSummary(data) |> stview()
 ## Here is that code, but I usually don't keep it in my scripts. Instead I just type it straight into the console as needed
 ### names(data)
 
-# Create a new data frame with our variables of interest
-clean <- subset(data, select = c(participant_id,                        # we need to know who is who
-                                 session_id,                            # we need to know when our data is collected since we have longitudinal data
-                                 ab_g_stc__design_id__fam,              # gonna need this later for assumption of independence
-                                 ab_g_dyn__cohort_income__hhold__3lvl,  # our income variable (yuck name we'll fix later)
-                                 fc_y_nsc__ns_003                       # our neighbourhood-safety variable (yuck name we'll fix later)
-                                 ## Important thing to NOT include is a comma after "fc_y_nsc__ns_003" since that is our last variable
-))
-
-# Remove all timepoints besides baseline
-## Baseline = ses-00A under the session_id column
-### You can find this nomenclature here: https://docs.abcdstudy.org/latest/
-clean <- subset(clean, session_id == "ses-00A")
-
-# A wrinkle unique to categorical variables: special codes
-## Both variables use 777 ("decline to answer") and 999 ("don't know")
-### These are NOT points on the scale, so we drop them before testing
-clean <- subset(clean, !(ab_g_dyn__cohort_income__hhold__3lvl %in% c(777, 999)) &
-                       !(fc_y_nsc__ns_003 %in% c(777, 999)))
-
-# Change variable names and recode
-clean <- clean |>
+# We'll build our analysis data set in ONE pipeline, the same tidyverse style you
+# learned in Modules 1 and 2: select() the columns, filter() the rows, mutate() to
+# recode, and drop_na() to handle missing data. Read "|>" as "and then".
+clean <- data |>
+  # select() our variables of interest, renaming the cryptic ones as new_name = old_name
   select(
-    participant_id,
-    session_id,
-    family_id = ab_g_stc__design_id__fam,
-    income    = ab_g_dyn__cohort_income__hhold__3lvl,
-    safety    = fc_y_nsc__ns_003
+    participant_id,                                   # we need to know who is who
+    session_id,                                       # we need to know when our data was collected (longitudinal)
+    family_id = ab_g_stc__design_id__fam,             # gonna need this later for assumption of independence
+    income    = ab_g_dyn__cohort_income__hhold__3lvl, # our income variable (renamed)
+    safety    = fc_y_nsc__ns_003                      # our neighbourhood-safety variable (renamed)
   ) |>
+  # filter() keeps ONLY our baseline visit (see https://docs.abcdstudy.org/latest/)
+  filter(session_id == "ses-00A") |>
+  # A wrinkle unique to categorical variables: special codes
+  ## Both variables use 777 ("decline to answer") and 999 ("don't know")
+  ## These are NOT points on the scale, so we filter() them out before testing
+  filter(!income %in% c(777, 999),
+         !safety %in% c(777, 999)) |>
+  # mutate() recodes both variables with case_when() and makes them factors
   mutate(
-    income = factor(income,
-                    levels = c(1, 2, 3),
-                    labels = c("< 50k", "50k to 100k", "> 100k")),
+    income = case_when(
+      income == 1 ~ "< 50k",
+      income == 2 ~ "50k to 100k",
+      income == 3 ~ "> 100k",
+      .default = NA
+    ) |>
+      factor(levels = c("< 50k", "50k to 100k", "> 100k")),
     # The safety item is a 5-point scale. Crossed with 3 income bands that is 15
-    # cells, and some will be nearly empty. We collapse it to 3 so every cell has
-    # enough data for the test to be valid.
+    # cells, and many will be nearly empty -- so we collapse it to 3 categories
+    # (setting levels = c(...) fixes their order for the table and the plot).
     safety = case_when(
       safety %in% c(1, 2) ~ "Disagree",
       safety == 3         ~ "Neutral",
       safety %in% c(4, 5) ~ "Agree",
       .default = NA
-    ),
-    safety = factor(safety, levels = c("Disagree", "Neutral", "Agree"))
-  )
-
-# Removing missing data (keep only complete cases)
-clean <- clean[complete.cases(clean), ]
+    ) |>
+      factor(levels = c("Disagree", "Neutral", "Agree"))
+  ) |>
+  # drop_na() removes anyone missing our variables of interest ("complete-case analysis")
+  tidyr::drop_na(family_id, income, safety)
 
 #-------------------------------------------------------------------------------
 # Test Assumptions - Independence of Observations
@@ -151,31 +150,41 @@ clean_no_sibs <- clean |>
 # Build the Contingency Table
 #-------------------------------------------------------------------------------
 # A chi-squared test runs on a cross-tabulation -- a grid of counts, one cell per
-# combination of the two variables. This table IS the data for the test.
-tab <- table(clean_no_sibs$income, clean_no_sibs$safety)
-tab
+# combination of the two variables. We build it with count() (Module 1) and then
+# pivot_wider() (Module 2) to lay the counts out as a grid.
+counts <- clean_no_sibs |>
+  count(income, safety)
 
-# Row proportions make the pattern easier to see
-## margin = 1 gives proportions WITHIN each income row
-round(prop.table(tab, margin = 1), 2)
+counts |>
+  tidyr::pivot_wider(names_from = safety, values_from = n)
+
+# Row proportions make the pattern easier to see -- the share of each income band
+# in each safety category. We compute them WITHIN each income group with
+# group_by() |> mutate(), then pivot_wider() to display.
+counts |>
+  group_by(income) |>
+  mutate(prop = round(n / sum(n), 2)) |>
+  ungroup() |>
+  select(income, safety, prop) |>
+  tidyr::pivot_wider(names_from = safety, values_from = prop)
 
 #-------------------------------------------------------------------------------
 # Test Assumptions - Expected Counts
 #-------------------------------------------------------------------------------
 # Chi-squared's main requirement: every EXPECTED count should be at least 5
 ## The test stores the expected counts, so fit it once and inspect them
-chi_check <- chisq.test(tab)
+chi_check <- chisq.test(clean_no_sibs$income, clean_no_sibs$safety)
 chi_check$expected # all of these should be >= 5
 
 # If any expected count is below 5:
 ## collapse categories further, OR
 ## use Fisher's exact test instead:
-### fisher.test(tab)
+### fisher.test(clean_no_sibs$income, clean_no_sibs$safety)
 
 #-------------------------------------------------------------------------------
 # Run the Chi-Squared Test
 #-------------------------------------------------------------------------------
-chi_result <- chisq.test(tab)
+chi_result <- chisq.test(clean_no_sibs$income, clean_no_sibs$safety)
 print(chi_result)
 
 # Key outputs to interpret:
@@ -188,8 +197,8 @@ print(chi_result)
 #-------------------------------------------------------------------------------
 # Cramer's V rescales chi-squared to run from 0 (no association) to 1 (perfect)
 ## Rough guide (smaller dimension = 3): Small ~0.1 | Medium ~0.3 | Large ~0.5
-n <- sum(tab)
-k <- min(nrow(tab), ncol(tab)) # the smaller dimension of the table
+n <- nrow(clean_no_sibs)
+k <- min(n_distinct(clean_no_sibs$income), n_distinct(clean_no_sibs$safety)) # smaller dimension
 cramers_v <- sqrt(as.numeric(chi_result$statistic) / (n * (k - 1)))
 cat("Cramer's V:", round(cramers_v, 3), "\n")
 

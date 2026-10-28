@@ -28,6 +28,8 @@ the Module 3 templates this will feel familiar.
 #| label: setup
 library(dplyr)
 library(ggplot2)
+# tidyr is used below as tidyr::drop_na() and tidyr::pivot_wider()
+# (install it with install.packages("tidyr") if you need to)
 
 data <- readRDS("data/data.RDS")
 ```
@@ -47,9 +49,8 @@ Two wrinkles here that the continuous templates did not have. First, both
 variables carry the special codes `777` (*decline to answer*) and `999` (*don't
 know*) — these are **not** points on the scale, so we drop them rather than let
 them masquerade as responses. Second, a five-point scale crossed with three income
-bands makes fifteen cells, and some will be nearly empty; we **collapse** the
-safety item to three categories so every cell has enough data for the test to be
-valid.
+bands makes fifteen cells, and many will be nearly empty; we **collapse** the
+safety item to three categories so the cells are not too sparse for the test.
 
 ```{r}
 #| label: chi-clean
@@ -65,20 +66,23 @@ clean <- data |>
   filter(!income %in% c(777, 999),             # drop "decline" / "don't know"
          !safety %in% c(777, 999)) |>
   mutate(
-    income = factor(income,
-      levels = c(1, 2, 3),
-      labels = c("< 50k", "50k to 100k", "> 100k")),
+    income = case_when(
+      income == 1 ~ "< 50k",
+      income == 2 ~ "50k to 100k",
+      income == 3 ~ "> 100k",
+      .default = NA
+    ) |>
+      factor(levels = c("< 50k", "50k to 100k", "> 100k")),
     # collapse the 5-point item into 3 so no cell is too sparse
     safety = case_when(
       safety %in% c(1, 2) ~ "Disagree",
       safety == 3         ~ "Neutral",
       safety %in% c(4, 5) ~ "Agree",
       .default = NA
-    ),
-    safety = factor(safety, levels = c("Disagree", "Neutral", "Agree"))
-  )
-
-clean <- clean[complete.cases(clean), ]
+    ) |>
+      factor(levels = c("Disagree", "Neutral", "Agree"))
+  ) |>
+  tidyr::drop_na(family_id, income, safety)
 ```
 
 As on the main page, we keep one child per family so siblings are not counted as
@@ -100,8 +104,11 @@ combination of the two variables. This table *is* the data for the test.
 
 ```{r}
 #| label: chi-table
-tab <- table(clean_no_sibs$income, clean_no_sibs$safety)
-tab
+counts <- clean_no_sibs |>
+  count(income, safety)
+
+counts |>
+  tidyr::pivot_wider(names_from = safety, values_from = n)  # long counts -> a grid
 ```
 
 Adding row proportions makes the pattern easier to see — what share of each income
@@ -109,7 +116,12 @@ band agrees their neighbourhood is safe:
 
 ```{r}
 #| label: chi-proptable
-round(prop.table(tab, margin = 1), 2)  # margin = 1 -> proportions within each income row
+counts |>
+  group_by(income) |>
+  mutate(prop = round(n / sum(n), 2)) |>  # proportions within each income row
+  ungroup() |>
+  select(income, safety, prop) |>
+  tidyr::pivot_wider(names_from = safety, values_from = prop)
 ```
 
 ## Check the assumption
@@ -120,20 +132,25 @@ expected counts, so we fit it once and inspect them.
 
 ```{r}
 #| label: chi-expected
-chi_check <- chisq.test(tab)
+chi_check <- chisq.test(clean_no_sibs$income, clean_no_sibs$safety)
 chi_check$expected  # all of these should be >= 5
 ```
 
-If any expected count fell below 5, you would collapse categories further (as we
-already did with the safety item) or use Fisher's exact test
-(`fisher.test(tab)`) instead. Here they are comfortably above the threshold, so
-the standard test is valid.
+Notice the warning R prints. Because most children feel safe, the **Disagree**
+column is thin, and one of these expected counts dips just below 5 — so R cautions
+that the chi-squared *approximation may be incorrect*. That warning is the
+assumption check doing its job. With the counts this close to the threshold and
+the association this strong (see the p-value below), the result still stands, but
+the clean remedies are to collapse further — fold **Disagree** and **Neutral**
+into a single *not-agree* category — or to switch to **Fisher's exact test**,
+`fisher.test(clean_no_sibs$income, clean_no_sibs$safety)`, which makes no
+large-sample approximation.
 
 ## Run the test
 
 ```{r}
 #| label: chi-test
-chi_result <- chisq.test(tab)
+chi_result <- chisq.test(clean_no_sibs$income, clean_no_sibs$safety)
 chi_result
 ```
 
@@ -151,8 +168,8 @@ smaller side: 0.1 small, 0.3 medium, 0.5 large.
 
 ```{r}
 #| label: chi-effect
-n <- sum(tab)
-k <- min(nrow(tab), ncol(tab))  # the smaller dimension
+n <- nrow(clean_no_sibs)
+k <- min(n_distinct(clean_no_sibs$income), n_distinct(clean_no_sibs$safety))  # smaller dimension
 cramers_v <- sqrt(as.numeric(chi_result$statistic) / (n * (k - 1)))
 cat("Cramér's V:", round(cramers_v, 3), "\n")
 ```
