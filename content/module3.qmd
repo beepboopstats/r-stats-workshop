@@ -7,48 +7,652 @@ open-graph:
   description: "t-tests, chi-squared, ANOVA and linear models in R, plus the normality and missing-data problems longitudinal data raises."
 twitter-card:
   description: "t-tests, chi-squared, ANOVA and linear models in R, plus the normality and missing-data problems longitudinal data raises."
+editor_options:
+  chunk_output_type: console
 ---
 
-::: {.callout-note}
-## Materials coming soon
-This page will fill in before the session.
+::: {.callout-warning}
+This page is under active development. The content might change.
 :::
 
 **Designed for** someone with intermediate knowledge of R and RStudio. The first
-two modules exist to prepare you for this one.
+two modules exist to prepare you for this one — if you are comfortable reading a
+file, wrangling it with [dplyr](module2.qmd) and drawing a `ggplot2` figure, you
+are ready.
 
-In this session we will:
+Modules 1 and 2 asked *what does the data look like?* This module asks the next
+question: **is a pattern we can see in the sample likely to be real in the
+population, or could it just be noise?** That is the whole job of inferential
+statistics.
 
-- run the analyses that appear most often in papers — **t-tests, chi-squared,
-  ANOVA**
-- discuss the considerations that **longitudinal datasets like ABCD** force on you,
-  including violated normality assumptions and missing data
-- introduce **linear models** for testing hypotheses
+## From description to inference
+
+A **descriptive** statistic summarises the sample in front of you: baseline
+height averaged 1.55 m, boys were taller than girls by a couple of centimetres.
+An **inferential** statistic asks whether that gap would survive if you could
+measure every child in the country, not just the 500 in this file.
+
+Three ideas carry the whole session:
+
+- **The null hypothesis.** We start by assuming there is *no* effect — no
+  difference between groups, no relationship between variables — and ask how
+  surprising our data would be if that were true.
+- **The p-value.** How surprising, exactly. A p-value below 0.05 is the usual
+  (arbitrary, conventional) line for calling a result "statistically
+  significant" and rejecting the null. It is *not* the probability the result is
+  real, and a tiny p-value on a trivial effect is still a trivial effect.
+- **The effect size.** How *big* the effect is, on a scale that does not depend
+  on sample size. A p-value tells you whether an effect is there; an effect size
+  tells you whether it matters. **Report both.** Every template below does.
+
+Which test you reach for depends entirely on the *shape* of your question —
+specifically, what kind of variables you are relating:
+
+| Your question | The variables | The test |
+|:--|:--|:--|
+| Do **two groups** differ on a number? | 1 categorical (2 levels) + 1 continuous | **t-test** |
+| Do **three or more groups** differ on a number? | 1 categorical (3+ levels) + 1 continuous | **ANOVA** |
+| Does one number **predict** another? | 2 continuous | **linear regression** |
+| Are **two categories** related? | 2 categorical | **chi-squared** |
+
+: {tbl-colwidths="[40,35,25]"}
+
+Most of this page is three worked **templates** — t-test, ANOVA and regression —
+that you can download, point at your own variables, and adapt into a
+poster-worthy analysis. The fourth, chi-squared, lives on its
+[own deep-dive page](module3-chi-squared.qmd).
 
 ::: {.callout-important}
-Module 3 is a **prerequisite for [Module 4](module4.qmd)**, which is a hands-on
-project session assuming you can already choose and run a test.
+Module 3 is a **prerequisite for [Module 4](module4.qmd)**, the hands-on project
+session. There you will take one of these templates and build it into a
+*proto-poster* — so the work you do here is the work you present there.
+:::
+
+::: {.callout-note}
+## Before you start
+Download the dataset and its dictionaries from the
+[dataset page](data.qmd#get-the-files) — `data.RDS`, `data_dictionary.csv` and
+`data_dictionary_levels.csv` — into your project's `data/` folder, next to
+`abcd-synthetic.csv` from Module 1.
+
+The templates are the live materials for this session. Download whichever you
+need and open it in RStudio:
+
+- [`R_Template_t.test.R`](../scripts/module3/R_Template_t.test.R) — two-group t-test
+- [`R_Template_ANOVA.R`](../scripts/module3/R_Template_ANOVA.R) — one-way ANOVA
+- [`R_Template_regression.R`](../scripts/module3/R_Template_regression.R) — simple linear regression
+- [`R_Template_chi.square.R`](../scripts/module3/R_Template_chi.square.R) — chi-squared test of independence
+
+Every chunk on this page is drawn from those files, lightly adapted so it runs
+from your project root.
 :::
 
 ## The data
 
 We work on `data/data.RDS`, the same ABCD-shaped dataset as
-[Module 2](module2.qmd) — 500 participants across five annual visits. Two of its
-properties drive this session: about 27% of cells are missing, and the missingness
-is *structured* rather than random, so complete-case analysis is never free. The
-[dataset reference page](data.qmd) sets out where the gaps come from.
+[Module 2](module2.qmd) — 500 participants across five annual visits, with coded
+variable names and a separate [data dictionary](data.qmd). Two of its properties
+shape every analysis on this page:
 
-## Preparation
+- **It is longitudinal.** The five rows belonging to one child are *not* five
+  independent observations, and neither are two siblings from the same family. A
+  hypothesis test assumes independent observations, so we have to engineer that
+  independence ourselves (below).
+- **About 27% of cells are missing, and the missingness is structured** — never a
+  uniform random sprinkle. Dropping incomplete rows is never free; it quietly
+  changes *who* you are studying. We use complete cases here because it keeps the
+  code readable, but we flag it as a choice, not a default.
 
-- [Module 2](module2.qmd), or equivalent comfort with tidyverse pipelines and
-  ggplot2
-- The missing-data section of [Module 1](module1.qmd#missing-data) — we pick that
-  thread up properly here
-- Download [the dataset and its dictionaries](data.qmd#get-the-files) into your
-  project's `data/` folder
+## 0. Load libraries
 
-## Resources
+Every template loads the same core, plus one or two packages for its assumption
+checks. Install any you are missing with `install.packages("car")` and so on.
+
+```{r}
+#| label: libraries
+library(ggplot2)  # figures
+library(dplyr)    # data wrangling
+library(car)      # Levene's test (equal variances)
+library(moments)  # skewness and kurtosis
+library(lmtest)   # Breusch-Pagan test (regression)
+```
+
+## Anatomy of a template
+
+All three templates follow the **same seven steps**. Learn the shape once and
+every test on this page — and most you will meet later — becomes a matter of
+swapping in different variables:
+
+1. **Clean** — pick your variables, keep the baseline visit, give the columns
+   readable names, and decide what to do with missing data.
+2. **Visualise** the raw variables, before any test.
+3. **Check assumptions** — mainly normality and, where it applies, equal
+   variances.
+4. **Engineer independence** — keep one child per family so siblings do not
+   count twice.
+5. **Run the test.**
+6. **Compute an effect size.**
+7. **Visualise the result.**
+
+The three templates differ only in steps 3, 5, 6 and 7 — exactly the steps that
+depend on your question. Steps 1, 2 and 4 are nearly identical every time.
+
+# Template 1 · Two groups: the t-test
+
+**The question: do boys and girls differ in height at baseline?** One continuous
+outcome (height), one two-level grouping variable (sex). That is the signature of
+a **t-test**.
+
+## Clean
+
+We pick five columns, keep only the baseline visit (`ses-00A`), rename the cryptic
+ABCD columns, recode sex from `1`/`2` to labels, and drop rows missing any of our
+variables.
+
+```{r}
+#| label: tt-clean
+data <- readRDS("data/data.RDS")
+
+clean <- data |>
+  select(
+    participant_id,
+    session_id,
+    family_id = ab_g_stc__design_id__fam,  # needed for the independence step
+    sex       = ab_g_stc__cohort_sex,
+    height    = ph_y_anthr__height_mean
+  ) |>
+  filter(session_id == "ses-00A") |>       # baseline only -- no longitudinal modelling here
+  mutate(
+    sex = case_when(
+      sex == 1 ~ "Male",
+      sex == 2 ~ "Female",
+      .default = NA
+    ),
+    sex = as.factor(sex)                    # grouping variables should be factors
+  )
+
+clean <- clean[complete.cases(clean), ]     # complete-case analysis (a choice, not a default)
+
+glimpse(clean)
+```
+
+::: {.callout-tip}
+## Going deeper
+Complete-case analysis throws away everyone with a gap. Because ABCD's
+missingness is *structured* — see the [dataset page](data.qmd#what-is-missing-and-why) —
+that can bias your result. Multiple imputation is the better tool, but it is well
+beyond this session; naming the trade-off is what matters here.
+:::
+
+## Visualise
+
+Always look before you test.
+
+```{r}
+#| label: fig-tt-dist
+#| fig-cap: "Baseline height, split by sex"
+#| fig-alt: "Two overlaid-then-faceted histograms of baseline height, one panel for females and one for males; both are roughly bell-shaped, with the male panel shifted slightly to taller values."
+#| warning: false
+ggplot(clean, aes(x = height, fill = sex)) +
+  geom_histogram(binwidth = 0.5, alpha = 0.6, position = "identity") +
+  facet_wrap(~sex) +
+  labs(title = "Distribution of baseline height by sex", x = "Height", y = "Count") +
+  theme_minimal()
+```
+
+## Check assumptions
+
+**Normality.** The Shapiro-Wilk test asks whether a sample could have come from a
+normal distribution (p > 0.05 is reassuring). Skewness should sit roughly within
+±2 and excess kurtosis within ±7. A Q-Q plot shows the same thing by eye — points
+hugging the line mean "normal."
+
+```{r}
+#| label: tt-normality
+by(clean$height, clean$sex, shapiro.test)  # normality within each group
+by(clean$height, clean$sex, skewness)
+by(clean$height, clean$sex, kurtosis)      # moments::kurtosis() centres a normal at 3
+```
+
+```{r}
+#| label: fig-tt-qq
+#| fig-cap: "Q-Q plot of height by sex"
+#| fig-alt: "Quantile-quantile plot of height for each sex; points fall close to the diagonal reference line, indicating approximately normal distributions."
+#| warning: false
+ggplot(clean, aes(sample = height, color = sex)) +
+  stat_qq() +
+  stat_qq_line() +
+  labs(title = "Q-Q plot by sex") +
+  theme_minimal()
+```
+
+**Equal variances.** A standard t-test assumes the two groups have the same
+spread. Levene's test checks it: p > 0.05 means equal variances are a fair
+assumption, so we can use `var.equal = TRUE`. If it failed, we would switch to
+Welch's correction (`var.equal = FALSE`).
+
+```{r}
+#| label: tt-levene
+leveneTest(height ~ sex, data = clean)
+```
+
+## Engineer independence
+
+Siblings share a family, so two children from one family are not independent
+observations. We keep a single, randomly chosen child per family. `set.seed()`
+makes that random choice reproducible — anyone running the code gets the same
+sample.
+
+```{r}
+#| label: tt-independence
+set.seed(1996)  # any fixed number works; it just has to be the same every run
+
+clean_no_sibs <- clean |>
+  group_by(family_id) |>
+  slice_sample(n = 1) |>  # one child per family
+  ungroup()
+
+nrow(clean) - nrow(clean_no_sibs)  # how many siblings were dropped
+```
+
+## Run the t-test
+
+```{r}
+#| label: tt-test
+t_result <- t.test(height ~ sex, data = clean_no_sibs, var.equal = TRUE)
+t_result
+```
+
+Read it as: `t` is the test statistic, `df` the degrees of freedom, `p-value`
+whether to reject the null of equal means, and the `95% CI` the plausible range
+for the true difference. If the interval excludes zero, the groups differ.
+
+## Effect size: Cohen's d
+
+The p-value says *whether* the means differ; Cohen's d says *by how much*, in
+standard-deviation units. Rough guide: 0.2 small, 0.5 medium, 0.8 large.
+
+```{r}
+#| label: tt-effect
+group_means <- tapply(clean_no_sibs$height, clean_no_sibs$sex, mean)
+group_sds   <- tapply(clean_no_sibs$height, clean_no_sibs$sex, sd)
+group_ns    <- tapply(clean_no_sibs$height, clean_no_sibs$sex, length)
+
+pooled_sd <- sqrt(((group_ns[1] - 1) * group_sds[1]^2 +
+                   (group_ns[2] - 1) * group_sds[2]^2) /
+                  (sum(group_ns) - 2))
+
+cohens_d <- abs(diff(group_means)) / pooled_sd
+cat("Cohen's d:", round(cohens_d, 3), "\n")
+```
+
+## Visualise the result
+
+```{r}
+#| label: fig-tt-result
+#| fig-cap: "Baseline height by sex"
+#| fig-alt: "Boxplots of baseline height for females and males with individual points jittered over them; the male box sits slightly higher, matching the significant t-test."
+#| warning: false
+ggplot(clean_no_sibs, aes(x = sex, y = height, fill = sex)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 16) +
+  geom_jitter(width = 0.1, alpha = 0.4) +
+  labs(title = "Baseline height by sex", x = "Sex", y = "Height") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+# Template 2 · Three or more groups: ANOVA
+
+**The question: does baseline height differ across parental-education groups?**
+Now the grouping variable has **five** levels, so a t-test will not do — we need a
+one-way **ANOVA**, which generalises the t-test to any number of groups.
+
+The cleaning and independence steps are the *same shape* as the t-test, so the
+prose is lighter here — watch the pattern repeat.
+
+## Clean
+
+```{r}
+#| label: aov-clean
+clean <- data |>
+  select(
+    participant_id,
+    session_id,
+    family_id    = ab_g_stc__design_id__fam,
+    parental_edu = ab_g_dyn__cohort_edu__cgs,  # five ordered levels
+    height       = ph_y_anthr__height_mean
+  ) |>
+  filter(session_id == "ses-00A") |>
+  mutate(
+    parental_edu = case_when(
+      parental_edu == 1 ~ "less_than_HS",
+      parental_edu == 2 ~ "HS_diploma",
+      parental_edu == 3 ~ "some_college",
+      parental_edu == 4 ~ "bachelor_degree",
+      parental_edu == 5 ~ "graduate_degree",
+      .default = NA
+    ),
+    # factor() with explicit levels fixes the order for plots and post-hoc tests
+    parental_edu = factor(parental_edu, levels = c(
+      "less_than_HS", "HS_diploma", "some_college",
+      "bachelor_degree", "graduate_degree"
+    ))
+  )
+
+clean <- clean[complete.cases(clean), ]
+glimpse(clean)
+```
+
+## Visualise
+
+```{r}
+#| label: fig-aov-dist
+#| fig-cap: "Baseline height across parental-education groups"
+#| fig-alt: "Five small histograms of baseline height, one per parental-education group; each is roughly bell-shaped and they overlap heavily."
+#| warning: false
+ggplot(clean, aes(x = height, fill = parental_edu)) +
+  geom_histogram(binwidth = 0.5, alpha = 0.6, position = "identity") +
+  facet_wrap(~parental_edu) +
+  labs(title = "Distribution of height by parental education", x = "Height", y = "Count") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Check assumptions
+
+Same normality battery as before, now *within each of the five groups*, plus
+Levene's test across all five. ANOVA is fairly robust to mild non-normality when
+groups are reasonably sized.
+
+```{r}
+#| label: aov-normality
+by(clean$height, clean$parental_edu, shapiro.test)
+by(clean$height, clean$parental_edu, skewness)
+by(clean$height, clean$parental_edu, kurtosis)
+```
+
+```{r}
+#| label: aov-levene
+leveneTest(height ~ parental_edu, data = clean)
+```
+
+## Engineer independence and run the ANOVA
+
+```{r}
+#| label: aov-test
+set.seed(1996)
+clean_no_sibs <- clean |>
+  group_by(family_id) |>
+  slice_sample(n = 1) |>
+  ungroup()
+
+anova_result <- aov(height ~ parental_edu, data = clean_no_sibs)
+summary(anova_result)
+```
+
+The `Pr(>F)` column is the p-value. A significant ANOVA tells you *that* at least
+one group differs — but **not which one**. (If Levene's test had failed, you would
+swap `aov()` for `oneway.test(height ~ parental_edu, var.equal = FALSE)`, Welch's
+ANOVA.)
+
+## Post-hoc: which groups differ?
+
+Tukey's HSD compares every pair of groups while correcting for the many
+comparisons, so you do not inflate your false-positive rate. Run it **only if the
+ANOVA was significant**.
+
+```{r}
+#| label: aov-tukey
+tukey_result <- TukeyHSD(anova_result)
+tukey_result
+```
+
+```{r}
+#| label: fig-aov-tukey
+#| fig-cap: "Tukey HSD: pairwise differences with 95% confidence intervals"
+#| fig-alt: "A dot-and-interval plot of every pairwise difference between parental-education groups; intervals crossing the zero line are not significant."
+#| fig-height: 7
+#| warning: false
+plot(tukey_result, las = 1)
+```
+
+Any interval that crosses zero is a pair that does **not** differ significantly.
+
+## Effect size: eta-squared
+
+Eta-squared (η²) is the share of total variance in height explained by group
+membership. Rough guide: 0.01 small, 0.06 medium, 0.14 large.
+
+```{r}
+#| label: aov-effect
+anova_summary <- summary(anova_result)
+ss_between <- anova_summary[[1]]["parental_edu", "Sum Sq"]
+ss_total   <- sum(anova_summary[[1]][, "Sum Sq"])
+eta_squared <- ss_between / ss_total
+cat("Eta-squared:", round(eta_squared, 3), "\n")
+```
+
+## Visualise the result
+
+```{r}
+#| label: fig-aov-result
+#| fig-cap: "Baseline height across parental-education groups"
+#| fig-alt: "Boxplots of baseline height for the five parental-education groups with jittered points; the boxes overlap substantially, matching a small effect size."
+#| fig-width: 10
+#| warning: false
+ggplot(clean_no_sibs, aes(x = parental_edu, y = height, fill = parental_edu)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 16) +
+  geom_jitter(width = 0.1, alpha = 0.4) +
+  labs(title = "Baseline height across parental-education groups",
+       x = "Parental education", y = "Height") +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 20, hjust = 1))
+```
+
+# Template 3 · Two continuous variables: regression
+
+**The question: does weight predict height at baseline?** Two *continuous*
+variables — an outcome (height) and a predictor (weight) — call for **simple
+linear regression**, which fits the best straight line through the cloud of
+points and tells you how steep and how reliable it is.
+
+## Clean
+
+No recoding this time, since both variables are already numeric.
+
+```{r}
+#| label: reg-clean
+clean <- data |>
+  select(
+    participant_id,
+    session_id,
+    family_id = ab_g_stc__design_id__fam,
+    weight    = ph_y_anthr__weight_mean,  # predictor
+    height    = ph_y_anthr__height_mean   # outcome
+  ) |>
+  filter(session_id == "ses-00A")
+
+clean <- clean[complete.cases(clean), ]
+glimpse(clean)
+```
+
+## Visualise
+
+For regression, the first look *is* a scatter plot with a fitted line.
+
+```{r}
+#| label: fig-reg-scatter
+#| fig-cap: "Height against weight, with a fitted line"
+#| fig-alt: "Scatter plot of baseline height against weight with an upward-sloping regression line and confidence band; taller children tend to be heavier."
+#| warning: false
+ggplot(clean, aes(x = weight, y = height)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
+  labs(title = "Height against weight", x = "Weight", y = "Height") +
+  theme_minimal()
+```
+
+## Engineer independence and fit the model
+
+```{r}
+#| label: reg-model
+set.seed(1996)
+clean_no_sibs <- clean |>
+  group_by(family_id) |>
+  slice_sample(n = 1) |>
+  ungroup()
+
+reg_result <- lm(height ~ weight, data = clean_no_sibs)
+summary(reg_result)
+```
+
+The `weight` row's `Estimate` is the slope — the predicted change in height for a
+one-unit rise in weight — and its p-value tests whether that slope differs from
+zero. `R-squared` is the share of variation in height the model explains.
+
+## Check assumptions (after fitting)
+
+Regression's assumptions live in the **residuals**, so we check them *after*
+fitting: residuals should be normal (Shapiro + Q-Q) and have constant variance
+(the Breusch-Pagan test; p > 0.05 is good). The residuals-vs-fitted plot should
+look like a flat, shapeless band — no funnel, no curve.
+
+```{r}
+#| label: reg-residuals
+shapiro.test(residuals(reg_result))  # normality of residuals
+bptest(reg_result)                   # Breusch-Pagan: constant variance?
+```
+
+```{r}
+#| label: fig-reg-resid
+#| fig-cap: "Residuals against fitted values"
+#| fig-alt: "Scatter plot of regression residuals against fitted values with a dashed line at zero and a smooth trend; the cloud is roughly flat and even, indicating constant variance."
+#| warning: false
+ggplot(data.frame(fitted = fitted(reg_result), residuals = residuals(reg_result)),
+       aes(x = fitted, y = residuals)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "steelblue") +
+  geom_smooth(se = FALSE, color = "tomato") +
+  labs(title = "Residuals vs. fitted values", x = "Fitted", y = "Residual") +
+  theme_minimal()
+```
+
+## Effect size: R² and standardized beta
+
+For simple regression, `R-squared` *is* the effect size (0.02 small, 0.13 medium,
+0.26 large). The standardized beta re-expresses the slope in standard-deviation
+units, so it no longer depends on the measurement scale.
+
+```{r}
+#| label: reg-effect
+r_squared <- summary(reg_result)$r.squared
+cat("R-squared:", round(r_squared, 3), "\n")
+
+beta <- coef(reg_result)["weight"] *
+  (sd(clean_no_sibs$weight) / sd(clean_no_sibs$height))
+cat("Standardized beta:", round(beta, 3), "\n")
+```
+
+## Visualise the result
+
+```{r}
+#| label: fig-reg-result
+#| fig-cap: "Simple linear regression of height on weight"
+#| fig-alt: "Scatter plot of height against weight with the fitted regression line and a shaded confidence band rising from lower-left to upper-right."
+#| warning: false
+ggplot(clean_no_sibs, aes(x = weight, y = height)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue", fill = "lightblue") +
+  labs(title = "Height predicted by weight", x = "Weight", y = "Height") +
+  theme_minimal()
+```
+
+## A fourth template: chi-squared
+
+What if **both** of your variables are categorical — say, income band and whether
+a child feels their neighbourhood is safe? Then none of the three tests above
+fit, and you want a **chi-squared test of independence**. It has its own template
+and its own walk-through:
+
+::: {.callout-tip}
+## Going deeper
+The full chi-squared workflow — contingency tables, expected-count checks,
+Cramér's V and a grouped bar chart — is on the
+[chi-squared deep-dive page](module3-chi-squared.qmd).
+:::
+
+## Exercise · make a template your own
+
+::: {.callout-note}
+## Exercise · ~15 min
+Pick whichever template matches a question you care about, and swap in your own
+variables from the [data dictionary](data.qmd#browse-the-variables). For example:
+is there a sex difference in **weight** (t-test)? Does **household income** (three
+levels) relate to a cognition score (ANOVA)? Does **screen time** predict a
+mental-health score (regression)?
+
+Change only the `select()` block and the variable names — the rest of the
+template carries over.
+:::
+
+::: {.callout-tip collapse="true"}
+## Solution — weight by sex (t-test)
+```{r}
+#| label: ex-solution
+sol <- data |>
+  select(participant_id, session_id,
+         family_id = ab_g_stc__design_id__fam,
+         sex       = ab_g_stc__cohort_sex,
+         weight    = ph_y_anthr__weight_mean) |>
+  filter(session_id == "ses-00A") |>
+  mutate(sex = factor(case_when(sex == 1 ~ "Male", sex == 2 ~ "Female")))
+
+sol <- sol[complete.cases(sol), ]
+
+set.seed(1996)
+sol_no_sibs <- sol |> group_by(family_id) |> slice_sample(n = 1) |> ungroup()
+
+t.test(weight ~ sex, data = sol_no_sibs, var.equal = TRUE)
+```
+Only the two variable names changed from Template 1 — that is the whole point of a
+template.
+:::
+
+## What you can now do
+
+- Match a research question to the right test by looking at the **shape** of its
+  variables — two groups, many groups, two numbers, or two categories.
+- Clean a longitudinal extract down to one baseline row per family, and say out
+  loud what your missing-data choice costs.
+- Check the assumptions a test rests on — normality, equal variances,
+  independence — instead of assuming them.
+- Report an **effect size** alongside the p-value, and read a confidence interval.
+- Produce the figure that goes next to the test on a poster.
+
+## From here to your proto-poster
+
+[Module 4](module4.qmd) on **Nov 12** is a hands-on project session. You will take
+**one** of these templates, run it end to end on a question of your choosing, and
+assemble the result into a **proto-poster** — a first, rough draft of the kind of
+poster you would bring to a conference.
+
+Here is an example of the finished shape to aim for:
+
+[Download an example poster (.pptx)](../scripts/module3/Poster_Example.pptx){.btn .btn-outline-primary .btn-sm}
+
+::: {.callout-important}
+Because Module 4 builds directly on this material, **Module 3 is a prerequisite**.
+Come with a question in mind and a template that fits it.
+:::
+
+## Going further
 
 - [longitudinal.dev](https://longitudinal.dev/) — a collection of statistical
-  analyses for longitudinal studies
-- [Running a paired t-test on ABCD data](https://longitudinal.dev/abcd/lm/difference-score_paired-ttest/)
+  analyses for longitudinal studies, written with ABCD in mind
+- [Running a paired t-test on ABCD data](https://longitudinal.dev/abcd/lm/difference-score_paired-ttest/) —
+  the paired design we flagged but did not cover
+- The [chi-squared deep-dive](module3-chi-squared.qmd) — the fourth template, for
+  two categorical variables
+
+Next: [Module 4 · Applied Projects →](module4.qmd) on Nov 12, where you turn one
+of these templates into a proto-poster.

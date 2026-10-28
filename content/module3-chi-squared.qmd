@@ -1,0 +1,199 @@
+---
+title: "Deep-dive · Chi-squared Tests"
+subtitle: "Optional companion to Module 3"
+pagetitle: "Chi-squared Test of Independence in R | ABCD R Workshop"
+description-meta: "Run a chi-squared test of independence in R on two categorical variables: contingency tables, the expected-count assumption, Cramér's V effect size, and a grouped bar chart."
+open-graph:
+  description: "A chi-squared test of independence in R: contingency tables, the expected-count assumption, Cramér's V, and a grouped bar chart — on ABCD-shaped data."
+twitter-card:
+  description: "A chi-squared test of independence in R: contingency tables, the expected-count assumption, Cramér's V, and a grouped bar chart — on ABCD-shaped data."
+---
+
+Optional. Nothing in [Module 3](module3.qmd) assumes this page — it is the fourth
+template, for the one question shape the three main templates cannot answer: **when
+both of your variables are categorical.**
+
+The t-test, ANOVA and regression on the Module 3 page all involve at least one
+*continuous* variable. But plenty of research questions relate two **categories**:
+does income band relate to whether a child feels safe in their neighbourhood? Do
+boys and girls differ in how curious they are about alcohol? For those, you reach
+for a **chi-squared (χ²) test of independence**, which asks whether the two
+category systems are related or independent.
+
+It follows the same template shape as the others — clean, visualise, check the
+assumption, test, effect size, visualise the result — so if you have read one of
+the Module 3 templates this will feel familiar.
+
+```{r}
+#| label: setup
+library(dplyr)
+library(ggplot2)
+
+data <- readRDS("data/data.RDS")
+```
+
+## The question
+
+**Is household income related to whether a child feels their neighbourhood is
+safe?** Two categorical variables:
+
+- `ab_g_dyn__cohort_income__hhold__3lvl` — household income in three bands
+- `fc_y_nsc__ns_003` — the youth's response to a neighbourhood-safety item, on a
+  five-point agree/disagree scale
+
+## Clean
+
+Two wrinkles here that the continuous templates did not have. First, both
+variables carry the special codes `777` (*decline to answer*) and `999` (*don't
+know*) — these are **not** points on the scale, so we drop them rather than let
+them masquerade as responses. Second, a five-point scale crossed with three income
+bands makes fifteen cells, and some will be nearly empty; we **collapse** the
+safety item to three categories so every cell has enough data for the test to be
+valid.
+
+```{r}
+#| label: chi-clean
+clean <- data |>
+  select(
+    participant_id,
+    session_id,
+    family_id = ab_g_stc__design_id__fam,
+    income    = ab_g_dyn__cohort_income__hhold__3lvl,
+    safety    = fc_y_nsc__ns_003
+  ) |>
+  filter(session_id == "ses-00A") |>           # baseline only
+  filter(!income %in% c(777, 999),             # drop "decline" / "don't know"
+         !safety %in% c(777, 999)) |>
+  mutate(
+    income = factor(income,
+      levels = c(1, 2, 3),
+      labels = c("< 50k", "50k to 100k", "> 100k")),
+    # collapse the 5-point item into 3 so no cell is too sparse
+    safety = case_when(
+      safety %in% c(1, 2) ~ "Disagree",
+      safety == 3         ~ "Neutral",
+      safety %in% c(4, 5) ~ "Agree",
+      .default = NA
+    ),
+    safety = factor(safety, levels = c("Disagree", "Neutral", "Agree"))
+  )
+
+clean <- clean[complete.cases(clean), ]
+```
+
+As on the main page, we keep one child per family so siblings are not counted as
+independent observations:
+
+```{r}
+#| label: chi-independence
+set.seed(1996)
+clean_no_sibs <- clean |>
+  group_by(family_id) |>
+  slice_sample(n = 1) |>
+  ungroup()
+```
+
+## The contingency table
+
+A chi-squared test runs on a **cross-tabulation** — a grid of counts, one cell per
+combination of the two variables. This table *is* the data for the test.
+
+```{r}
+#| label: chi-table
+tab <- table(clean_no_sibs$income, clean_no_sibs$safety)
+tab
+```
+
+Adding row proportions makes the pattern easier to see — what share of each income
+band agrees their neighbourhood is safe:
+
+```{r}
+#| label: chi-proptable
+round(prop.table(tab, margin = 1), 2)  # margin = 1 -> proportions within each income row
+```
+
+## Check the assumption
+
+Chi-squared's main requirement is that **expected** counts are not too small — the
+usual rule is that every expected count should be at least 5. The test stores the
+expected counts, so we fit it once and inspect them.
+
+```{r}
+#| label: chi-expected
+chi_check <- chisq.test(tab)
+chi_check$expected  # all of these should be >= 5
+```
+
+If any expected count fell below 5, you would collapse categories further (as we
+already did with the safety item) or use Fisher's exact test
+(`fisher.test(tab)`) instead. Here they are comfortably above the threshold, so
+the standard test is valid.
+
+## Run the test
+
+```{r}
+#| label: chi-test
+chi_result <- chisq.test(tab)
+chi_result
+```
+
+Read it as: `X-squared` is the test statistic, `df` the degrees of freedom
+`(rows − 1) × (columns − 1)`, and `p-value` whether to reject the null hypothesis
+that income and perceived safety are **independent**. A p-value below 0.05 says
+they are related.
+
+## Effect size: Cramér's V
+
+As always, significance is not size. **Cramér's V** rescales the chi-squared
+statistic to run from 0 (no association) to 1 (perfect association), so it is
+comparable across tables. A rough guide for a table with three levels on the
+smaller side: 0.1 small, 0.3 medium, 0.5 large.
+
+```{r}
+#| label: chi-effect
+n <- sum(tab)
+k <- min(nrow(tab), ncol(tab))  # the smaller dimension
+cramers_v <- sqrt(as.numeric(chi_result$statistic) / (n * (k - 1)))
+cat("Cramér's V:", round(cramers_v, 3), "\n")
+```
+
+## Visualise the result
+
+A grouped bar chart of the row proportions shows the association directly: the
+taller the "Agree" bar climbs as income rises, the stronger the relationship.
+
+```{r}
+#| label: fig-chi-result
+#| fig-cap: "Perceived neighbourhood safety by household income"
+#| fig-alt: "Grouped bar chart of the proportion of children who disagree, are neutral, or agree that their neighbourhood is safe, within each of three income bands; the 'agree' proportion rises with income."
+#| warning: false
+plot_df <- clean_no_sibs |>
+  count(income, safety) |>
+  group_by(income) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup()
+
+ggplot(plot_df, aes(x = income, y = prop, fill = safety)) +
+  geom_col(position = "dodge", alpha = 0.85) +
+  labs(
+    title = "Perceived neighbourhood safety by household income",
+    x = "Household income", y = "Proportion within income band", fill = "Feels safe?"
+  ) +
+  theme_minimal()
+```
+
+## In short
+
+The chi-squared test of independence is the categorical counterpart to the tests
+on the main page:
+
+- Build a **contingency table** of the two categorical variables.
+- Check the **expected counts** are all at least 5 — collapse categories or use
+  `fisher.test()` if not.
+- Run `chisq.test()` and read the p-value.
+- Report **Cramér's V** as the effect size, and show the pattern with a grouped
+  bar chart.
+
+Back to [Module 3](module3.qmd), or the downloadable
+[`R_Template_chi.square.R`](../scripts/module3/R_Template_chi.square.R) to run this
+on your own variables.

@@ -55,7 +55,7 @@ setwd("~/ABCD_Workshop_Module3")
 
 # Read in the data set that Billu made previously
 ## While this data is fake, it is modelled after ABCD data
-data <- readRDS("data.rds") # an RDS file is just a type of R file we can easily load or read into our environment
+data <- readRDS("data.RDS") # an RDS file is just a type of R file we can easily load or read into our environment
 
 # Check in the Global Environment section to make sure you have your data loaded
 ## It should have something like 2295 observations (obs.) of 53 variables
@@ -70,7 +70,7 @@ View(data) # This opens your data up as a new tab
 # Neat! But overwhelming
 
 # Let's look at it in a clean table format
-dfSummary(data) %>% stview()
+dfSummary(data) |> stview()
 
 #-------------------------------------------------------------------------------
 # Explore and clean SOME of our data
@@ -142,7 +142,7 @@ clean <- clean[complete.cases(clean), ]
 # Visualize variables of interest
 #-------------------------------------------------------------------------------
 # Let's look at it in a clean table format
-dfSummary(clean) %>% stview()
+dfSummary(clean) |> stview()
 
 # Let's look at the relationship between weight (predictor) and height (outcome)
 ggplot(clean, aes(x = weight, y = height)) +
