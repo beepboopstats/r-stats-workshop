@@ -668,6 +668,33 @@ Because Module 4 builds directly on this material, **Module 3 is a prerequisite*
 Come with a question in mind and a template that fits it.
 :::
 
+## Slides & readings
+
+The slides from the live session, plus two short papers that go deeper on the two
+judgement calls this module keeps running into — how big an effect has to be to
+matter, and what to do about missing rows.
+
+[Download the Module 3 slides (.pdf)](../scripts/module3/Module_3_Lecture.pdf){.btn .btn-outline-primary .btn-sm}
+
+- [Dick et al. (2021)](../scripts/module3/Dick-et-al-2021-meaningful-associations.pdf) —
+  interpreting a **meaningful effect size** at the sample sizes ABCD works at
+- [Dong & Peng (2013)](../scripts/module3/Dong-Peng-2013-missing-data-methods.pdf) —
+  principled approaches to **missing data**
+
+## Recording
+
+The following recording is of the live workshop hosted on Oct 29, 2026.
+
+::: {.callout-warning}
+
+The topics covered during the live session is a smaller subset of all
+the materials displayed above. We highly recommend you go through this entire
+page and the exercises to get comfortable with the contents / topics of
+Module 3.
+:::
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/onf0MSSaDIg?si=YRKYeY_7ZYIfJG5H" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## Going further
 
 - [longitudinal.dev](https://longitudinal.dev/) — a collection of statistical

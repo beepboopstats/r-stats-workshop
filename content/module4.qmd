@@ -9,11 +9,6 @@ twitter-card:
   description: "End-to-end analysis practice: build a hypothesis, choose a test, and produce poster-ready results from ABCD-style data."
 ---
 
-::: {.callout-note}
-## Materials coming soon
-This page will fill in before the session.
-:::
-
 ::: {.callout-important}
 ## Module 3 is required
 [Module 3](module3.qmd) is a prerequisite. This session is hands-on project work,
@@ -21,25 +16,53 @@ not instruction, and it assumes you can already choose and run an appropriate
 statistical test.
 :::
 
-A session for the intermediate R user to practise **end-to-end data analysis**.
+The home stretch. A session for the intermediate R user to practise
+**end-to-end data analysis** — in small groups, on a question you bring.
 
 We use `data/data.RDS` — a synthetic dataset organised the same way as the main
 ABCD dataset, described in full on the [dataset reference page](data.qmd) — to ask
-basic scientific questions. You will:
+basic scientific questions. In your group you will:
 
 - build a hypothesis
 - decide on the appropriate statistical test
 - use R to run the analysis and produce the visualisations
 
-The goal is to leave with results of the kind you would put on a **scientific
-poster** at a conference.
+The goal is to leave with a **proto-poster** — a first draft of the kind of results
+you would put on a scientific poster at a conference. Here is the shape to aim for:
 
-## Preparation
+[Download an example poster (.pptx)](../scripts/module3/Poster_Example.pptx){.btn .btn-outline-primary .btn-sm}
 
-- [Module 3](module3.qmd) — required
+## Before the session
+
+A few things to line up beforehand so your group can hit the ground running on
+Nov 12:
+
+- **By Nov 4** — let Andrew and Billu know whether you are attending Module 4, so
+  no one is left without a group for the final projects.
+- **Nov 4–11** — work with your group, over email or Zoom, to agree on a question
+  you can turn into a poster.
+- **By Nov 11** — send Andrew and Billu your proposed research question along with
+  its **dependent and independent variables**. You can change these later, but
+  have something lined up before the session.
+- **Review Modules 0–3** — you will need these skills to build your poster.
+
+::: {.callout-tip}
+## Lining up your question
 - Download [the dataset and its dictionaries](data.qmd#get-the-files) into your
-  project's `data/` folder
-- Have a browse of the [variable list](data.qmd#browse-the-variables) — the
-  question you bring has to be answerable from these 53 columns
-- Bring a question you are curious about, if you have one. Otherwise we supply
-  them.
+  project's `data/` folder.
+- Browse the [variable list](data.qmd#browse-the-variables) — your question has to
+  be answerable from these 53 columns.
+- Reuse a [Module 3 template](module3.qmd#before-you-start) that fits the shape of
+  your question. Don't have a question? We supply them.
+:::
+
+## During the session · Nov 12
+
+We will use the whole time to practise what we have learned, working in our small
+groups so you can troubleshoot and manipulate code together. This is the
+culmination of — and the reason for — the whole workshop, so engage with your
+group mates: science is a team sport, and this is the chance to practise it.
+
+Groups will also present their code and their poster draft to the room. That is
+just so we can troubleshoot together as a big group, and show off how far everyone
+has come.

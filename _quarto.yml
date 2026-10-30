@@ -44,6 +44,8 @@ website:
         file: content/module2.qmd
       - text: "M3.Inferential"
         file: content/module3.qmd
+      - text: "M4.Applied"
+        file: content/module4.qmd
       - text: "Deep Dive"
         menu:
           - text: "The ABCD-shaped dataset"
@@ -60,10 +62,6 @@ website:
             file: content/module2-functions.qmd
           - text: "Chi-squared tests"
             file: content/module3-chi-squared.qmd
-      - text: "Upcoming"
-        menu:
-          - text: "M4.Applied Projects"
-            file: content/module4.qmd
     tools:
       - icon: github
         href: https://github.com/beepboopstats/r-stats-workshop
