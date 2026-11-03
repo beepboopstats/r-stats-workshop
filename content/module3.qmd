@@ -590,7 +590,7 @@ ggplot(clean_no_sibs, aes(x = weight, y = height)) +
   theme_minimal()
 ```
 
-## A fourth template: chi-squared
+# A fourth template: chi-squared
 
 What if **both** of your variables are categorical — say, income band and whether
 a child feels their neighbourhood is safe? Then none of the three tests above
@@ -604,7 +604,7 @@ Cramér's V and a grouped bar chart — is on the
 [chi-squared deep-dive page](module3-chi-squared.qmd).
 :::
 
-## Exercise · make a template your own
+# Exercise · make a template your own
 
 ::: {.callout-note}
 ## Exercise · ~15 min
@@ -641,7 +641,7 @@ Only the two variable names changed from Template 1 — that is the whole point 
 template.
 :::
 
-## What you can now do
+# What you can now do
 
 - Match a research question to the right test by looking at the **shape** of its
   variables — two groups, many groups, two numbers, or two categories.
@@ -652,7 +652,7 @@ template.
 - Report an **effect size** alongside the p-value, and read a confidence interval.
 - Produce the figure that goes next to the test on a poster.
 
-## From here to your proto-poster
+# From here to your proto-poster
 
 [Module 4](module4.qmd) on **Nov 12** is a hands-on project session. You will take
 **one** of these templates, run it end to end on a question of your choosing, and
@@ -668,7 +668,7 @@ Because Module 4 builds directly on this material, **Module 3 is a prerequisite*
 Come with a question in mind and a template that fits it.
 :::
 
-## Slides & readings
+# Slides & readings
 
 The slides from the live session, plus two short papers that go deeper on the two
 judgement calls this module keeps running into — how big an effect has to be to
@@ -681,7 +681,7 @@ matter, and what to do about missing rows.
 - [Dong & Peng (2013)](../scripts/module3/Dong-Peng-2013-missing-data-methods.pdf) —
   principled approaches to **missing data**
 
-## Recording
+# Recording
 
 The following recording is of the live workshop hosted on Oct 29, 2026.
 
@@ -695,7 +695,7 @@ Module 3.
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/onf0MSSaDIg?si=YRKYeY_7ZYIfJG5H" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-## Going further
+# Going further
 
 - [longitudinal.dev](https://longitudinal.dev/) — a collection of statistical
   analyses for longitudinal studies, written with ABCD in mind
