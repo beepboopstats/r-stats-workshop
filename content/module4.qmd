@@ -37,8 +37,9 @@ you would put on a scientific poster at a conference. Here is the shape to aim f
 A few things to line up beforehand so your group can hit the ground running on
 Nov 12:
 
-- **By Nov 4** — let Andrew and Billu know whether you are attending Module 4, so
-  no one is left without a group for the final projects.
+- **By Nov 4** — [RSVP on the attendance page](attendance.qmd), so no one is left
+  without a group for the final projects. While you're there, check that your
+  attendance record is right.
 - **Nov 4–11** — work with your group, over email or Zoom, to agree on a question
   you can turn into a poster.
 - **By Nov 11** — send Andrew and Billu your proposed research question along with

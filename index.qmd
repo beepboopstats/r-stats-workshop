@@ -89,6 +89,9 @@ Development Workgroup** and **ABCD-ReproNim** indicating which modules you
 completed. These are a useful addition to a CV and strengthen applications for
 graduate school or roles that expect demonstrated statistical programming skill.
 
+[Check your attendance record](content/attendance.qmd) to make sure your certificate
+will be right.
+
 ## What we teach with
 
 We use **tidyverse** style R throughout — the `|>` pipe, and packages like

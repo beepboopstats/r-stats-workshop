@@ -7,8 +7,10 @@ project:
     - 404.qmd
     - content/*.qmd
   resources:
-    - data/
-    - scripts/
+    - /data/
+    - /scripts/
+    - /assets/attendance/  # ciphertext only -- see CLAUDE.md, Data and participant privacy
+    - /assets/js/
 
 execute:
   echo: true       # this is a teaching site -- code is the content
@@ -46,6 +48,8 @@ website:
         file: content/module3.qmd
       - text: "M4.Applied"
         file: content/module4.qmd
+      - text: "Attendance & RSVP"
+        file: content/attendance.qmd
       - text: "Deep Dive"
         menu:
           - text: "The ABCD-shaped dataset"

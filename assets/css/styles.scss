@@ -104,3 +104,19 @@ table.schedule {
 .cell-output-stdout pre {
   overflow-x: auto;
 }
+
+/* Attendance lookup (content/attendance.qmd) */
+.attendance-form {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 32rem;
+  margin: 0.5rem 0 1rem;
+  input { flex: 1 1 auto; min-width: 0; }
+}
+.attendance-card { margin-bottom: 1rem; }
+.attendance-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  dd { margin: 0; overflow-wrap: anywhere; }
+}
