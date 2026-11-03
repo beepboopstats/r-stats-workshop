@@ -1,6 +1,6 @@
 ---
 title: "Attendance & Module 4 RSVP"
-subtitle: "Check your record · RSVP by Wed Nov 4"
+subtitle: "Check your record · RSVP by Thu Nov 5"
 pagetitle: "Attendance Check & Module 4 RSVP | ABCD R Workshop"
 description-meta: "Check that your R workshop attendance was recorded correctly for your certificate, and tell us whether you will join the Module 4 applied projects session."
 open-graph:
@@ -20,7 +20,7 @@ include-after-body:
 Your certificate lists the modules you attended, so please check that we recorded you
 correctly. At the same time, tell us whether you are coming to
 [Module 4](module4.qmd) on **Thu Nov 12**, so we can build the project groups.
-**Please respond by Wed Nov 4.**
+**Please respond by Thu Nov 5.**
 
 Enter the email address you used to register or to join Zoom:
 
