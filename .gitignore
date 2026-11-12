@@ -27,3 +27,6 @@ docs/
 output/*
 !output/.gitkeep
 CLAUDE.md
+
+# surveydown / DB credentials (Phase 2) -- never commit
+.env

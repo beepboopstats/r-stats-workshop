@@ -68,3 +68,10 @@ group mates: science is a team sport, and this is the chance to practise it.
 Groups will also present their code and their poster draft to the room. That is
 just so we can troubleshoot together as a big group, and show off how far everyone
 has come.
+
+## After the session
+
+That's the series. Please tell us how it went — it takes about three minutes, it
+is anonymous, and the next cohort gets the version your answers shape.
+
+[Leave feedback on the series](feedback.qmd){.btn .btn-primary}

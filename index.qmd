@@ -115,6 +115,13 @@ decoding variable names:
 [Module 1 dataset](data/abcd-synthetic.csv){.btn .btn-outline-primary .btn-sm}
 [Modules 2–4 dataset](content/data.qmd#get-the-files){.btn .btn-outline-primary .btn-sm}
 
+## Tell us how it went
+
+If you attended any part of the series, your feedback shapes the next one. It is
+anonymous and takes about three minutes.
+
+[Leave feedback](content/feedback.qmd){.btn .btn-outline-primary .btn-sm}
+
 ## Questions?
 
 Contact **Andrew Moore** ([ajm9311@ou.edu](mailto:ajm9311@ou.edu)) or
