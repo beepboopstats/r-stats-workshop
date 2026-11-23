@@ -48,10 +48,8 @@ website:
         file: content/module3.qmd
       - text: "M4.Applied"
         file: content/module4.qmd
-      - text: "Attendance & RSVP"
+      - text: "Attendance"
         file: content/attendance.qmd
-      - text: "Feedback"
-        file: content/feedback.qmd
       - text: "Deep Dive"
         menu:
           - text: "The ABCD-shaped dataset"

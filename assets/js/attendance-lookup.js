@@ -6,27 +6,20 @@
 // address. The file is generated privately (dev/zoom-attendance/encrypt-lookup.mjs);
 // the scheme below must stay in step with that script.
 //
-// Corrections and the Module 4 RSVP go to a Google Form, opened pre-filled.
-// Until FORM.url is set, the page falls back to a pre-written email instead.
+// The end-of-workshop attendance check is done: participants who spot a problem
+// report it with the button, which opens a pre-filled email to the organisers.
+// FORM.url is intentionally empty so the page uses that email (formLink is kept
+// only as the fallback switch; set FORM.url to re-enable a Google Form).
 (function () {
   "use strict";
 
-  // --- Google Form config -------------------------------------------------
-  // Paste the form's base URL (ending in /viewform) and the entry.NNN id of
-  // each question, taken from the form's "Get pre-filled link".
+  // --- Google Form config (disabled: url empty -> email is used) ----------
   const FORM = {
-    url: "https://docs.google.com/forms/d/e/1FAIpQLSdOzgrAnWlPHOtWeDZsCNG_t4MXZDm_iW3LNsf18Y6aOPJqHw/viewform",
-    fields: {
-      email: "entry.942880674",          // email looked up with
-      name: "entry.1185417601",          // name for the certificate
-      otherEmails: "entry.383306557",    // other emails used
-      modules: "entry.1488421833",       // checkboxes: "Module 1" / "Module 2" / "Module 3"
-      // notes and the Module 4 RSVP are left blank for the participant to answer
-    },
-    // label of each checkbox option in the form, by module number
+    url: "",
+    fields: {},
     moduleOption: (n) => "Module " + n,
   };
-  const ORGANISERS = "ajm9311@ou.edu,biplabendu.das@gmail.com";
+  const ORGANISERS = "biplabendu.das@gmail.com,ajm9311@ou.edu";
   const DATA_URL = "../assets/attendance/lookup.json";
 
   // --- crypto (mirror of encrypt-lookup.mjs) -------------------------------
@@ -79,22 +72,24 @@
   }
 
   function mailLink(email, rec) {
-    const lines = ["Email I looked up with: " + normEmail(email)];
+    const lines = ["Email I looked up with: " + normEmail(email), ""];
+    lines.push("--- Attendance summary shown on the website ---");
     if (rec) {
+      const held = rec.modules.filter((m) => !m.upcoming);
+      const n = held.filter((m) => m.attended).length;
       lines.push("Name on record: " + (rec.name || "(none)"),
-        "Correct name for my certificate: ",
-        "Other emails on record: " + (rec.emails.filter((x) => x !== normEmail(email)).join(", ") || "(none)"),
-        "Other emails I used: ",
-        "", "Attendance on record:");
-      rec.modules.filter((m) => !m.upcoming).forEach((m) =>
-        lines.push("  " + m.label + ": " + (m.attended ? "attended, " + m.minutes + " min" : "not recorded")));
-      lines.push("Corrections: ");
+        "Other emails on record: " +
+          (rec.emails.filter((x) => x !== normEmail(email)).join(", ") || "(none)"),
+        "Attended " + n + " of " + held.length + " sessions.");
+      held.forEach((m) =>
+        lines.push("  " + m.label + " (" + m.date + "): " +
+          (m.attended ? "attended, " + m.minutes + " min" : "not recorded")));
     } else {
-      lines.push("My email was not found. Name: ", "Modules I attended: ");
+      lines.push("No record was found for this email address.");
     }
-    lines.push("", "Will I attend Module 4 on Nov 12 (Yes / No / Not sure): ");
+    lines.push("", "--- Describe your issue ---", "");
     return "mailto:" + ORGANISERS +
-      "?subject=" + encodeURIComponent("R workshop: attendance check + Module 4 RSVP") +
+      "?subject=" + encodeURIComponent("R + Stats Workshop - Attendance Issue") +
       "&body=" + encodeURIComponent(lines.join("\n"));
   }
 
@@ -143,10 +138,10 @@
                 el("th", {}, "Module"), el("th", {}, "Date"),
                 el("th", {}, "Status"), el("th", { class: "text-end" }, "Minutes"))),
               tbody)),
-          el("p", {}, "Whether or not everything above is right, please use the button below. " +
-            "Use it to correct anything that is wrong (the details above are filled in for you), " +
-            "and to tell us whether you will attend Module 4."),
-          actionButton(email, rec, "Confirm or correct + RSVP for Module 4"))));
+          el("p", {}, "If anything above is wrong, let us know so we can fix it before your " +
+            "certificate is issued. The button opens an email with this summary filled in — " +
+            "just describe the problem."),
+          actionButton(email, rec, "If incorrect, click here to reach us."))));
   }
 
   function renderMissing(out, email) {
@@ -154,9 +149,9 @@
       el("div", { class: "alert alert-warning" },
         el("p", {}, "We have no record under that email address. If you registered or joined " +
           "Zoom with a different address (a personal one, say), try that one instead."),
-        el("p", { class: "mb-2" }, "Still not found? Use the button below so we can add you, " +
-          "and tell us about Module 4 at the same time."),
-        actionButton(email, null, "Tell us which modules you attended + RSVP")));
+        el("p", { class: "mb-2" }, "Still not found? Use the button below so we can look into it " +
+          "and add your attendance."),
+        actionButton(email, null, "If incorrect, click here to reach us.")));
   }
 
   function init() {
