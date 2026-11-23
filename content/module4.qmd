@@ -74,4 +74,4 @@ has come.
 That's the series. Please tell us how it went — it takes about three minutes, it
 is anonymous, and the next cohort gets the version your answers shape.
 
-[Leave feedback on the series](attendance.qmd#feedback){.btn .btn-primary}
+[Check your attendance & leave feedback](attendance.qmd){.btn .btn-primary}

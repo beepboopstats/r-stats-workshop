@@ -120,7 +120,7 @@ decoding variable names:
 If you attended any part of the series, your feedback shapes the next one. It is
 anonymous and takes about three minutes.
 
-[Leave feedback](content/attendance.qmd#feedback){.btn .btn-outline-primary .btn-sm}
+[Check attendance & leave feedback](content/attendance.qmd){.btn .btn-outline-primary .btn-sm}
 
 ## Questions?
 

@@ -21,6 +21,9 @@
   };
   const ORGANISERS = "biplabendu.das@gmail.com,ajm9311@ou.edu";
   const DATA_URL = "../assets/attendance/lookup.json";
+  // Step 2: the feedback form, which also confirms the name for the certificate.
+  const FEEDBACK_URL =
+    "https://docs.google.com/forms/d/e/1FAIpQLScIijc_VR9vu8Oflb8Mkk_VxQNG7JNQXMiL8dti-VFvexfdkg/viewform";
 
   // --- crypto (mirror of encrypt-lookup.mjs) -------------------------------
   const enc = new TextEncoder(), dec = new TextDecoder();
@@ -101,10 +104,17 @@
     return n;
   };
 
-  function actionButton(email, rec, label) {
+  function actionButton(email, rec, label, cls) {
     const href = formLink(email, rec) || mailLink(email, rec);
-    const a = el("a", { class: "btn btn-primary", href }, label);
+    const a = el("a", { class: cls || "btn btn-primary", href }, label);
     if (FORM.url) { a.target = "_blank"; a.rel = "noopener"; }
+    return a;
+  }
+
+  function feedbackButton(label) {
+    const a = el("a", { class: "btn btn-primary", href: FEEDBACK_URL }, label);
+    a.target = "_blank";
+    a.rel = "noopener";
     return a;
   }
 
@@ -131,17 +141,23 @@
             el("dt", {}, "Name on record"), el("dd", {}, rec.name || "(no name on record)"),
             el("dt", {}, "Other emails on record"),
             el("dd", {}, others.length ? others.join(", ") : "None")),
-          el("p", {}, "Attended " + n + " of " + held.length + " sessions held so far."),
+          el("p", {}, "Attended " + n + " of " + held.length + " sessions."),
           el("div", { class: "table-responsive" },
             el("table", { class: "table table-sm" },
               el("thead", {}, el("tr", {},
                 el("th", {}, "Module"), el("th", {}, "Date"),
                 el("th", {}, "Status"), el("th", { class: "text-end" }, "Minutes"))),
               tbody)),
-          el("p", {}, "If anything above is wrong, let us know so we can fix it before your " +
-            "certificate is issued. The button opens an email with this summary filled in — " +
-            "just describe the problem."),
-          actionButton(email, rec, "If incorrect, click here to reach us."))));
+          el("p", {}, "Now that you can see your record, two things:"),
+          el("ol", { class: "attendance-steps" },
+            el("li", {}, "If anything above is wrong, reach out so we can fix it before your " +
+              "certificate is issued — the email opens with this summary filled in, so just " +
+              "describe the problem."),
+            el("li", {}, "If it looks right, open the feedback form to confirm your name for the " +
+              "certificate and leave us a few comments.")),
+          el("div", { class: "d-flex flex-wrap gap-2" },
+            actionButton(email, rec, "If incorrect, click here to reach us.", "btn btn-outline-secondary"),
+            feedbackButton("Looks good — leave feedback")))));
   }
 
   function renderMissing(out, email) {
