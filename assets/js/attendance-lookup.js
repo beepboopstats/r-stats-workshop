@@ -22,8 +22,12 @@
   const ORGANISERS = "biplabendu.das@gmail.com,ajm9311@ou.edu";
   const DATA_URL = "../assets/attendance/lookup.json";
   // Step 2: the feedback form, which also confirms the name for the certificate.
+  // The button pre-fills the form's "Email you used for the workshop" question
+  // (entry id below) with the address the participant looked up, so each response
+  // can be matched back to an attendance record.
   const FEEDBACK_URL =
     "https://docs.google.com/forms/d/e/1FAIpQLScIijc_VR9vu8Oflb8Mkk_VxQNG7JNQXMiL8dti-VFvexfdkg/viewform";
+  const FEEDBACK_EMAIL_ENTRY = "entry.261194170";
 
   // --- crypto (mirror of encrypt-lookup.mjs) -------------------------------
   const enc = new TextEncoder(), dec = new TextDecoder();
@@ -111,8 +115,14 @@
     return a;
   }
 
-  function feedbackButton(label) {
-    const a = el("a", { class: "btn btn-primary", href: FEEDBACK_URL }, label);
+  function feedbackButton(email, label) {
+    let href = FEEDBACK_URL;
+    if (FEEDBACK_EMAIL_ENTRY && email) {
+      const p = new URLSearchParams({ usp: "pp_url" });
+      p.append(FEEDBACK_EMAIL_ENTRY, normEmail(email));
+      href += "?" + p.toString();
+    }
+    const a = el("a", { class: "btn btn-primary", href }, label);
     a.target = "_blank";
     a.rel = "noopener";
     return a;
@@ -157,7 +167,7 @@
               "certificate and leave us a few comments.")),
           el("div", { class: "d-flex flex-wrap gap-2" },
             actionButton(email, rec, "If incorrect, click here to reach us.", "btn btn-outline-secondary"),
-            feedbackButton("Looks good — leave feedback")))));
+            feedbackButton(email, "Looks good — leave feedback")))));
   }
 
   function renderMissing(out, email) {
